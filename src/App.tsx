@@ -1,6 +1,7 @@
 // App.tsx
-import { useRef, useEffect, useState, act, } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import './App.css'
+import { handleFormula } from './Formulas';
 
 const cellWidth = 100;
 const cellHeight = 21;
@@ -18,14 +19,78 @@ function colIndexToLabel(index: number): string {
   return label;
 }
 
+const cellRefToCoord = (ref: string): string => {
+  const match = ref.match(/^([A-Z]+)(\d+)$/i);
+  if (!match) throw new Error(`Invalid cell reference: ${ref}`);
+
+  const [, colLetters, rowStr] = match;
+
+  // Convert letters to column number (e.g., A=1, B=2, ..., Z=26, AA=27, AB=28, etc.)
+  let col = 0;
+  for (let i = 0; i < colLetters.length; i++) {
+    col *= 26;
+    col += colLetters.charCodeAt(i) - 'A'.charCodeAt(0) + 1;
+  }
+
+  const row = parseInt(rowStr, 10);
+  return `${row},${col}`;
+};
+
+type DataType = 'FORMULA' | 'TEXT' | 'NUMBER' | 'ERROR';
+
+interface Cell {
+  rawValue: string | number | null;
+  dataType: DataType;
+  value: string;
+}
+
+const isNumeric = (str: string): boolean => {
+  return !isNaN(parseFloat(str)) && isFinite(Number(str));
+};
+
+const parseCell = (input: string, getCell: any):  Cell => {
+  if(isNumeric(input)) {
+    return {
+      rawValue: parseFloat(input),
+      dataType: 'NUMBER',
+      value: input
+    }
+  } else if(input.length && input[0] === "=") {
+    // formula
+    const formulaValue = handleFormula(input,getCell)
+    if(!formulaValue) {
+      return {
+        rawValue: input,
+        dataType: 'ERROR',
+        value: "#ERR"
+      }
+    }
+    return {
+      rawValue: input,
+      dataType: 'FORMULA',
+      value: `${formulaValue}`
+    }
+  }
+  return {
+    rawValue: input,
+    dataType: 'TEXT',
+    value: input
+  }
+}
+
 
 export default function App() {
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [scrollOffset, setScrollOffset] = useState({ x: 0, y: 0 });
   const [activeCell,setActiveCell] = useState({row: 1, col: 1});
-  const [cellData, setCellData] = useState<Map<string, string>>(new Map());
+  const [cellData, setCellData] = useState<Map<string, Cell>>(new Map());
   const [editingValue,setEditingValue] = useState('');
   const [isEditing,setIsEditing] = useState(false);
+
+  const getCell = (cellRef: string) => {
+    const rowColForm = cellRefToCoord(cellRef);
+    return cellData.get(rowColForm)
+  }
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -73,7 +138,7 @@ export default function App() {
         const key = `${activeCell.row},${activeCell.col}`;
           setCellData((prev) => {
             const newData = new Map(prev);
-            newData.set(key, editingValue);
+            newData.set(key, parseCell(editingValue,getCell));
             return newData;
           });
         setIsEditing(false);
@@ -205,7 +270,7 @@ export default function App() {
         if(cellData.has(`${[row]},${[col]}`)) {
           ctx.fillStyle = 'black';
           ctx.font = '12px sans-serif';
-          ctx.fillText(cellData.get(`${[row]},${[col]}`) ?? '', x + 5, y + 15);
+          ctx.fillText(cellData.get(`${[row]},${[col]}`)?.value ?? '', x + 5, y + 15);
         }
         
       }
