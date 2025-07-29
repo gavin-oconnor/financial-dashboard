@@ -25,7 +25,6 @@ const cellRefToCoord = (ref: string): string => {
 
   const [, colLetters, rowStr] = match;
 
-  // Convert letters to column number (e.g., A=1, B=2, ..., Z=26, AA=27, AB=28, etc.)
   let col = 0;
   for (let i = 0; i < colLetters.length; i++) {
     col *= 26;
@@ -33,7 +32,7 @@ const cellRefToCoord = (ref: string): string => {
   }
 
   const row = parseInt(rowStr, 10);
-  return `${row},${col}`;
+  return `${row-1},${col-1}`;
 };
 
 type DataType = 'FORMULA' | 'TEXT' | 'NUMBER' | 'ERROR';
@@ -58,7 +57,7 @@ const parseCell = (input: string, getCell: any):  Cell => {
   } else if(input.length && input[0] === "=") {
     // formula
     const formulaValue = handleFormula(input,getCell)
-    if(!formulaValue) {
+    if(formulaValue === null) {
       return {
         rawValue: input,
         dataType: 'ERROR',
@@ -78,7 +77,6 @@ const parseCell = (input: string, getCell: any):  Cell => {
   }
 }
 
-
 export default function App() {
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [scrollOffset, setScrollOffset] = useState({ x: 0, y: 0 });
@@ -89,7 +87,11 @@ export default function App() {
 
   const getCell = (cellRef: string) => {
     const rowColForm = cellRefToCoord(cellRef);
-    return cellData.get(rowColForm)
+    const cell = cellData.get(rowColForm);
+    if(cell?.value) {
+      return parseFloat(cell.value)
+    }
+    return 0;
   }
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -98,6 +100,16 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
+        if(isEditing) {
+        const key = `${activeCell.row},${activeCell.col}`;
+          setCellData((prev) => {
+            const newData = new Map(prev);
+            newData.set(key, parseCell(editingValue,getCell));
+            return newData;
+          });
+        setIsEditing(false);
+        setEditingValue('')
+        }
         setActiveCell((prev) => {
           if (prev.row < rows - 1) {
             return { ...prev, row: prev.row + 1 };
@@ -106,6 +118,16 @@ export default function App() {
         });
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
+        if(isEditing) {
+        const key = `${activeCell.row},${activeCell.col}`;
+          setCellData((prev) => {
+            const newData = new Map(prev);
+            newData.set(key, parseCell(editingValue,getCell));
+            return newData;
+          });
+        setIsEditing(false);
+        setEditingValue('')
+        }
         setActiveCell((prev) => {
           if (prev.row > 0) {
             return { ...prev, row: prev.row - 1 };
@@ -114,6 +136,16 @@ export default function App() {
         });
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
+        if(isEditing) {
+        const key = `${activeCell.row},${activeCell.col}`;
+          setCellData((prev) => {
+            const newData = new Map(prev);
+            newData.set(key, parseCell(editingValue,getCell));
+            return newData;
+          });
+        setIsEditing(false);
+        setEditingValue('')
+        }
         setActiveCell((prev) => {
           if (prev.col > 0) {
             return { ...prev, col: prev.col - 1 };
@@ -122,6 +154,16 @@ export default function App() {
         });
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
+        if(isEditing) {
+        const key = `${activeCell.row},${activeCell.col}`;
+          setCellData((prev) => {
+            const newData = new Map(prev);
+            newData.set(key, parseCell(editingValue,getCell));
+            return newData;
+          });
+        setIsEditing(false);
+        setEditingValue('')
+        }
         setActiveCell((prev) => {
           if (prev.col < cols - 1) {
             return { ...prev, col: prev.col + 1 };
@@ -174,10 +216,8 @@ export default function App() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    console.log("double click!")
     const handleDoubleClick = (e: MouseEvent) => {
       e.preventDefault();
-      console.log("double click!")
       const bounds = canvas.getBoundingClientRect();
       const x = e.clientX - bounds.left;
       const y = e.clientY - bounds.top;
@@ -201,6 +241,7 @@ export default function App() {
     if (!container) return;
 
     const handleScroll = () => {
+      !isEditing &&
       setScrollOffset({
         x: container.scrollLeft,
         y: container.scrollTop,
@@ -226,13 +267,26 @@ export default function App() {
       const row = Math.floor((y - columnHeaderHeight + scrollOffset.y) / cellHeight);
   
       if (row >= 0 && row < rows && col >= 0 && col < cols) {
+        console.log(`Is editing ${isEditing}`)
+        if(isEditing) {
+          console.log("I'm gonna do it")
+          e.preventDefault();
+          const key = `${activeCell.row},${activeCell.col}`;
+          setCellData((prev) => {
+            const newData = new Map(prev);
+            newData.set(key, parseCell(editingValue,getCell));
+            return newData;
+          });
+        setIsEditing(false);
+        setEditingValue('')
+        }
         setActiveCell({ row, col });
       }
     };
   
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
-  }, [scrollOffset]);
+  }, [scrollOffset, isEditing]);
 
   // Redraw canvas on scroll/resize
   useEffect(() => {

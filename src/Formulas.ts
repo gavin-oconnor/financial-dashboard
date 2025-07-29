@@ -180,7 +180,9 @@ const evaluate = (node: ASTNode, getValue: (cell: string) => number): number => 
     case 'NumberLiteral':
       return node.value
     case 'CellReference':
-      return getValue(node.value); // e.g., getValue("A1") → 5
+      console.log("getting value");
+      console.log(getValue(node.value));
+      return getValue(node.value);
     case 'BinaryOperation':
       const left = evaluate(node.left, getValue);
       const right = evaluate(node.right, getValue);
@@ -194,6 +196,8 @@ const evaluate = (node: ASTNode, getValue: (cell: string) => number): number => 
       }
     case 'FunctionCall':
       const args = node.args.map(arg => evaluate(arg, getValue));
+      console.log(args);
+      console.log()
       switch(node.name.toUpperCase()) {
         case 'SUM': return args.reduce((a, b) => a + b, 0);
         default: throw new Error(`Unknown function: ${node.name}`);
@@ -204,12 +208,17 @@ const evaluate = (node: ASTNode, getValue: (cell: string) => number): number => 
 }
 
 export const handleFormula = (formulaText: string, getValue: (cell: string) => number): number | string | null => {
+  console.log('evaluating')
     try {
         const returnValue = evaluate(parse(tokenize(formulaText)),getValue);
+        console.log("gonna return")
+        console.log(returnValue);
         return returnValue;
-    } catch {
-        return null;
+    } catch(error) {
+        console.log("caught")
+        console.error(error);
     }
+    return null;
 }
 
 // const input = '=SUM(A1, B2) * 10';
