@@ -1,5 +1,5 @@
 // App.tsx
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, act } from 'react';
 import './App.css'
 import { handleFormula } from './Formulas';
 
@@ -18,6 +18,14 @@ function colIndexToLabel(index: number): string {
   }
   return label;
 }
+
+type Bounds = {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+};
+
 
 const cellRefToCoord = (ref: string): string => {
   const match = ref.match(/^([A-Z]+)(\d+)$/i);
@@ -84,6 +92,7 @@ export default function App() {
   const [cellData, setCellData] = useState<Map<string, Cell>>(new Map());
   const [editingValue,setEditingValue] = useState('');
   const [isEditing,setIsEditing] = useState(false);
+  const [activeRange,setActiveRange] = useState<Bounds | null>(null);
 
   const getCell = (cellRef: string) => {
     const rowColForm = cellRefToCoord(cellRef);
@@ -100,6 +109,21 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
+        if(e.shiftKey) {
+          if(!activeRange && activeCell.row < rows - 1) {
+            console.log("FIRST OPTION")
+            const newActiveRange = {top: activeCell.row, bottom: activeCell.row + 1, left: activeCell.col, right: activeCell.col};
+            setActiveRange(newActiveRange);
+          } else {
+            console.log("SECOND OPTION")
+            setActiveRange((prev) => {
+          if (prev && prev.bottom < rows - 1) {
+            return { ...prev, bottom: prev.bottom + 1 };
+          }
+          return prev;
+        });
+          }
+        } else {
         if(isEditing) {
         const key = `${activeCell.row},${activeCell.col}`;
           setCellData((prev) => {
@@ -116,6 +140,7 @@ export default function App() {
           }
           return prev;
         });
+        }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         if(isEditing) {
@@ -195,7 +220,7 @@ export default function App() {
   
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isEditing, editingValue]);
+  }, [isEditing, editingValue, activeRange, activeCell]);
   
   // Measure viewport size
   useEffect(() => {
@@ -326,6 +351,10 @@ export default function App() {
           ctx.font = '12px sans-serif';
           ctx.fillText(cellData.get(`${[row]},${[col]}`)?.value ?? '', x + 5, y + 15);
         }
+        if(activeRange && activeRange.top <= row && row <= activeRange.bottom && activeRange.left <= col && activeRange.right >= col) {
+          ctx.fillStyle = 'rgb(84, 178, 255, 0.5)';
+          ctx.fillRect(x, y, cellWidth, cellHeight);
+        }
         
       }
     }
@@ -370,7 +399,7 @@ export default function App() {
     ctx.fillRect(x, y, rowHeaderWidth, cellHeight);
     ctx.strokeStyle = '#ccc';
     ctx.strokeRect(x, y, rowHeaderWidth, cellHeight);
-  }, [scrollOffset, viewportSize, activeCell, cellData]);
+  }, [scrollOffset, viewportSize, activeCell, cellData, activeRange]);
   useEffect(() => {
     console.log(isEditing)
   },[isEditing])
