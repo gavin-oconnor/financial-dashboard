@@ -1,7 +1,7 @@
 // App.tsx
 import { useRef, useEffect, useState } from 'react';
 import './App.css'
-import { handleArrowDown, handleArrowLeft, handleArrowRight, handleArrowUp, handleRightArrow } from './keyHandlers.ts'
+import { handleArrowDown, handleArrowLeft, handleArrowRight, handleArrowUp, handleBackspace, handleEnter, handleInputKey, handleRightArrow } from './keyHandlers.ts'
 import { colIndexToLabel, getCell, parseCell } from './Services.ts';
 import type { Bounds, Cell, CellCoordinate, Coordinate, Dimension } from './Types.ts';
 import { useSpreadsheetStore } from './store/spreadsheetStore.ts';
@@ -24,8 +24,9 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const {isEditing } = useSpreadsheetStore.getState();
       if (e.key === 'ArrowDown') {
-          handleArrowDown(e, rows);
+        handleArrowDown(e, rows);
       } else if(e.key === 'ArrowUp') {
         // to implement
         handleArrowUp(e, rows);
@@ -35,29 +36,13 @@ export default function App() {
       } else if(e.key === 'ArrowLeft') {
         // to implement
         handleArrowLeft(e,cols);
+      } else if(e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditing) {
+        handleInputKey(e);
+      } else if (e.key === 'Enter' && isEditing) {
+        handleEnter(e, rows);
+      } else if(e.key === 'Backspace' && !isEditing) {
+        handleBackspace(e);
       }
-    //   } else if (e.key.length === 1 &&
-    //     !e.ctrlKey && !e.metaKey && !e.altKey && !isEditing) {
-    //     e.preventDefault();
-    //     setIsEditing(true);
-    //     setEditingValue(e.key);
-    //   } else if (e.key === 'Enter' && isEditing) {
-    //     e.preventDefault();
-    //     const key = `${activeCell.row},${activeCell.col}`;
-    //     setCellData((prev) => {
-    //       const newData = new Map(prev);
-    //       newData.set(key, parseCell(editingValue, getCell));
-    //       return newData;
-    //     });
-    //     setIsEditing(false);
-    //     setEditingValue('')
-    //     // optionally move to the next cell
-    //     setActiveCell((prev) => ({
-    //       ...prev,
-    //       row: Math.min(prev.row + 1, rows - 1),
-    //     }));
-    //   }
-    // };
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);

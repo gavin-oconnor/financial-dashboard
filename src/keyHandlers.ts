@@ -1,3 +1,5 @@
+import type { Key } from "react";
+import { getCell, parseCell } from "./Services";
 import { useSpreadsheetStore } from "./store/spreadsheetStore";
 
 export const handleArrowDown = (e: KeyboardEvent, rows: number) => {
@@ -114,4 +116,52 @@ export const handleArrowLeft = (e: KeyboardEvent, cols: number) => {
       setActiveRange(null);
     }
   }
+}
+
+export const handleInputKey = (e: KeyboardEvent) => {
+  const { setIsEditing, setEditingValue } = useSpreadsheetStore.getState();
+  e.preventDefault();
+  setIsEditing(true);
+  setEditingValue(e.key);
+}
+
+export const handleEnter = (e: KeyboardEvent, rows: number) => {
+  const { setCellData, activeCell, editingValue, setIsEditing, setEditingValue, setActiveCell} = useSpreadsheetStore.getState();
+  e.preventDefault();
+  const key = `${activeCell.row},${activeCell.col}`;
+  setCellData((prev) => {
+    const newData = new Map(prev);
+    newData.set(key, parseCell(editingValue, getCell));
+    return newData;
+  });
+  setIsEditing(false);
+  setEditingValue('')
+  // optionally move to the next cell
+  setActiveCell({
+    col: activeCell.col,
+    row: Math.min(activeCell.row + 1, rows - 1),
+  });
+}
+
+export const handleBackspace = (e: KeyboardEvent) => {
+  const {activeCell, setCellData, activeRange} = useSpreadsheetStore.getState();
+  if(activeRange) {
+    for(let i=activeRange.left; i<=activeRange.right; i++) {
+      for(let j=activeRange.top; j <=activeRange.bottom; j++) {
+        let key = `${j},${i}`;
+        setCellData((prev) => {
+          const newData = new Map(prev);
+          newData.delete(key);
+          return newData;
+      });
+    }
+  }
+  } else {
+    const key = `${activeCell.row},${activeCell.col}`;
+  setCellData((prev) => {
+    const newData = new Map(prev);
+    newData.delete(key);
+    return newData;
+  });
+}
 }
