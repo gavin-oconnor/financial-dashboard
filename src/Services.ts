@@ -1,12 +1,13 @@
-import { handleFormula } from "./Formulas";
+import { defaultFns, isErr, runFormula, type Context } from "./Formulas";
 import { useSpreadsheetStore } from "./store/spreadsheetStore";
 import type { Cell } from "./Types";
+
 
 export const isNumeric = (str: string): boolean => {
   return !isNaN(parseFloat(str)) && isFinite(Number(str));
 };
 
-export const parseCell = (input: string, getCell: any): Cell => {
+export const parseCell = (input: string): Cell => {
   if (isNumeric(input)) {
     return {
       rawValue: parseFloat(input),
@@ -15,18 +16,29 @@ export const parseCell = (input: string, getCell: any): Cell => {
     }
   } else if (input.length && input[0] === "=") {
     // formula
-    const formulaValue = handleFormula(input, getCell)
-    if (formulaValue === null) {
+    const formulaContext: Context = {
+      getCell: (ref: string) => {
+        const rowColRef = cellRefToCoord(ref);
+        const cellData: Map<string, Cell> = useSpreadsheetStore.getState().cellData;
+
+        const cell = cellData.get(rowColRef);
+        if (!cell || cell.dataType != 'NUMBER') return 0; // default if cell missing
+        return parseFloat(cell.value);
+    },
+    functions: defaultFns()
+  }
+    const formulaReturnValue = runFormula(input, formulaContext);
+    if(isErr(formulaReturnValue)) {
       return {
         rawValue: input,
         dataType: 'ERROR',
-        value: "#ERR"
+        value: formulaReturnValue.code
       }
     }
     return {
       rawValue: input,
       dataType: 'FORMULA',
-      value: `${formulaValue}`
+      value: `${formulaReturnValue}`
     }
   }
   return {

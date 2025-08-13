@@ -13,7 +13,7 @@ export const handleArrowDown = (e: KeyboardEvent, rows: number) => {
       setActiveRange(newActiveRange);
       } else {
       if(activeRange && activeRange.top < activeCell.row) {
-        if(activeCell.row - activeRange.top === 1) {
+        if(activeCell.row - activeRange.top === 1 && activeRange.left == activeCell.col && activeRange.right == activeCell.col) {
           setActiveRange(null);
         } else {
           setActiveRange({...activeRange, top: activeRange.top + 1});
@@ -42,7 +42,7 @@ export const handleArrowUp = (e: KeyboardEvent, rows: number) => {
       setActiveRange(newActiveRange);
       } else {
       if(activeRange && activeRange.bottom > activeCell.row) {
-        if(activeRange.bottom - activeCell.row === 1) {
+        if(activeRange.bottom - activeCell.row === 1  && activeRange.left == activeCell.col && activeRange.right == activeCell.col) {
           setActiveRange(null);
         } else {
           setActiveRange({...activeRange, bottom: activeRange.bottom-1});
@@ -71,7 +71,7 @@ export const handleArrowRight = (e: KeyboardEvent, cols: number) => {
       setActiveRange(newActiveRange);
       } else {
       if(activeRange && activeRange.left < activeCell.col) {
-        if(activeCell.col - activeRange.left === 1) {
+        if(activeCell.col - activeRange.left === 1 && activeRange.top === activeCell.row && activeRange.bottom === activeCell.row) {
           setActiveRange(null);
         } else {
           setActiveRange({...activeRange, left: activeRange.left+1});

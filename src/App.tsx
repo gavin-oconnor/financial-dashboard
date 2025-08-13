@@ -1,11 +1,12 @@
 // App.tsx
 import { useRef, useEffect, useState } from 'react';
 import './App.css'
-import { handleArrowDown, handleArrowLeft, handleArrowRight, handleArrowUp, handleBackspace, handleEnter, handleInputKey, handleRightArrow } from './keyHandlers.ts'
+import { handleArrowDown, handleArrowLeft, handleArrowRight, handleArrowUp, handleBackspace, handleEnter, handleInputKey } from './keyHandlers.ts'
 import { colIndexToLabel, getCell, parseCell } from './Services.ts';
 import type { Bounds, Cell, CellCoordinate, Coordinate, Dimension } from './Types.ts';
 import { useSpreadsheetStore } from './store/spreadsheetStore.ts';
 import { drawCanvas } from './drawService.ts';
+import { clickActivate, dblClickActivateEditing } from './clickHandlers.ts';
 
 const cellWidth = 100;
 const cellHeight = 21;
@@ -26,16 +27,13 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const {isEditing } = useSpreadsheetStore.getState();
       if (e.key === 'ArrowDown') {
-        handleArrowDown(e, rows);
+        !isEditing && handleArrowDown(e, rows);
       } else if(e.key === 'ArrowUp') {
-        // to implement
-        handleArrowUp(e, rows);
+        !isEditing && handleArrowUp(e, rows);
       } else if(e.key === 'ArrowRight') {
-        handleArrowRight(e, cols);
-        // to implement
+        !isEditing && handleArrowRight(e, cols);
       } else if(e.key === 'ArrowLeft') {
-        // to implement
-        handleArrowLeft(e,cols);
+        !isEditing && handleArrowLeft(e,cols);
       } else if(e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditing) {
         handleInputKey(e);
       } else if (e.key === 'Enter' && isEditing) {
@@ -48,7 +46,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Measure viewport size
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -70,17 +67,7 @@ export default function App() {
     const handleDoubleClick = (e: MouseEvent) => {
       e.preventDefault();
       const bounds = canvas.getBoundingClientRect();
-      const x = e.clientX - bounds.left;
-      const y = e.clientY - bounds.top;
-
-      const col = Math.floor((x + scrollOffset.x - rowHeaderWidth) / cellWidth);
-      const row = Math.floor((y + scrollOffset.y - columnHeaderHeight) / cellHeight);
-
-      if (row >= 0 && row < rows && col >= 0 && col < cols) {
-        const { setActiveCell, setIsEditing } = useSpreadsheetStore.getState();
-        setActiveCell({ row, col });
-        setIsEditing(true);
-      }
+      dblClickActivateEditing(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, rows, cols, cellHeight, cellWidth);
     };
 
     window.addEventListener('dblclick', handleDoubleClick);
@@ -104,37 +91,14 @@ export default function App() {
     container.addEventListener('scroll', handleScroll);
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
+  
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       // Get canvas bounding box
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-
-      // Calculate position relative to canvas
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      // Adjust for scroll offsets and header sizes
-      const col = Math.floor((x - rowHeaderWidth + scrollOffset.x) / cellWidth);
-      const row = Math.floor((y - columnHeaderHeight + scrollOffset.y) / cellHeight);
-
-      if (row >= 0 && row < rows && col >= 0 && col < cols) {
-        const { isEditing, setCellData, setIsEditing, setEditingValue, setActiveCell, activeCell, editingValue } = useSpreadsheetStore.getState();
-        if (isEditing) {
-          console.log("I'm gonna do it")
-          e.preventDefault();
-          const key = `${activeCell.row},${activeCell.col}`;
-          setCellData((prev) => {
-            const newData = new Map(prev);
-            newData.set(key, parseCell(editingValue, getCell));
-            return newData;
-          });
-          setIsEditing(false);
-          setEditingValue('')
-        }
-        setActiveCell({ row, col });
-      }
+      const bounds = canvas.getBoundingClientRect();
+      clickActivate(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, rows, cols, cellHeight, cellWidth);
     };
 
     window.addEventListener('click', handleClick);

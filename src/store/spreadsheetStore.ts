@@ -21,8 +21,6 @@ interface SpreadsheetState {
 export const useSpreadsheetStore = create<SpreadsheetState>((set) => ({
   activeCell: { row: 1, col: 1 },
   setActiveCell: (coord) => {
-    console.log("SETTING");
-    console.log(coord);
     set({ activeCell: coord })},
 
   cellData: new Map(),
