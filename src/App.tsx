@@ -2,11 +2,11 @@
 import { useRef, useEffect, useState } from 'react';
 import './App.css'
 import { handleArrowDown, handleArrowLeft, handleArrowRight, handleArrowUp, handleBackspace, handleEnter, handleInputKey } from './keyHandlers.ts'
-import { colIndexToLabel, getCell, parseCell } from './Services.ts';
 import type { Bounds, Cell, CellCoordinate, Coordinate, Dimension } from './Types.ts';
 import { useSpreadsheetStore } from './store/spreadsheetStore.ts';
 import { drawCanvas } from './drawService.ts';
 import { clickActivate, dblClickActivateEditing } from './clickHandlers.ts';
+import { parseCell } from './Services.ts';
 
 const cellWidth = 100;
 const cellHeight = 21;
@@ -38,6 +38,7 @@ export default function App() {
         handleInputKey(e);
       } else if (e.key === 'Enter' && isEditing) {
         handleEnter(e, rows);
+
       } else if(e.key === 'Backspace' && !isEditing) {
         handleBackspace(e);
       }
@@ -98,7 +99,9 @@ export default function App() {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const bounds = canvas.getBoundingClientRect();
-      clickActivate(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, rows, cols, cellHeight, cellWidth);
+      const { isEditing } = useSpreadsheetStore.getState();
+      console.log(isEditing);
+      clickActivate(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, rows, cols, cellHeight, cellWidth, isEditing);
     };
 
     window.addEventListener('click', handleClick);
@@ -188,7 +191,7 @@ export default function App() {
             const key = `${activeCell.row},${activeCell.col}`;
             setCellData((prev) => {
               const newData = new Map(prev);
-              newData.set(key, {rawValue: editingValue, value: editingValue, dataType: "TEXT"});
+              newData.set(key, parseCell(editingValue));
               return newData;
             });
             setIsEditing(false);

@@ -126,12 +126,13 @@ export const handleInputKey = (e: KeyboardEvent) => {
 }
 
 export const handleEnter = (e: KeyboardEvent, rows: number) => {
+  console.log("calling handleEnter");
   const { setCellData, activeCell, editingValue, setIsEditing, setEditingValue, setActiveCell} = useSpreadsheetStore.getState();
   e.preventDefault();
   const key = `${activeCell.row},${activeCell.col}`;
   setCellData((prev) => {
     const newData = new Map(prev);
-    newData.set(key, parseCell(editingValue, getCell));
+    newData.set(key, parseCell(editingValue));
     return newData;
   });
   setIsEditing(false);
