@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Bounds, Cell, CellCoordinate } from '../Types';
+import type { Bounds, Cell, CellCoordinate, ClipboardPointer } from '../Types';
 
 interface SpreadsheetState {
   activeCell: CellCoordinate;
@@ -16,6 +16,9 @@ interface SpreadsheetState {
 
   activeRange: Bounds | null;
   setActiveRange: (range: Bounds | null) => void;
+
+  clipboardPointer: ClipboardPointer | null;
+  setClipboardPointer: (pointer: ClipboardPointer | null) => void;
 }
 
 export const useSpreadsheetStore = create<SpreadsheetState>((set) => ({
@@ -37,4 +40,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set) => ({
 
   activeRange: null,
   setActiveRange: (range) => set({ activeRange: range }),
+
+  clipboardPointer: null,
+  setClipboardPointer: (pointer) => set({clipboardPointer: pointer})
 }));

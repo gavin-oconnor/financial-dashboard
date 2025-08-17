@@ -1,7 +1,7 @@
 // App.tsx
 import { useRef, useEffect, useState } from 'react';
 import './App.css'
-import { handleArrowDown, handleArrowLeft, handleArrowRight, handleArrowUp, handleBackspace, handleEnter, handleInputKey } from './keyHandlers.ts'
+import { handleArrowDown, handleArrowLeft, handleArrowRight, handleArrowUp, handleBackspace, handleCopy, handleEnter, handleInputKey, handlePaste, handleTab } from './keyHandlers.ts'
 import type { Bounds, Cell, CellCoordinate, Coordinate, Dimension } from './Types.ts';
 import { useSpreadsheetStore } from './store/spreadsheetStore.ts';
 import { drawCanvas } from './drawService.ts';
@@ -27,21 +27,28 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const {isEditing } = useSpreadsheetStore.getState();
+      console.log(e.key);
       if (e.key === 'ArrowDown') {
         !isEditing && handleArrowDown(e, rows);
       } else if(e.key === 'ArrowUp') {
-        !isEditing && handleArrowUp(e, rows);
+        !isEditing && handleArrowUp(e);
       } else if(e.key === 'ArrowRight') {
         !isEditing && handleArrowRight(e, cols);
       } else if(e.key === 'ArrowLeft') {
-        !isEditing && handleArrowLeft(e,cols);
+        !isEditing && handleArrowLeft(e);
       } else if(e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditing) {
         handleInputKey(e);
-      } else if (e.key === 'Enter' && isEditing) {
+      } else if (e.key === 'Enter') {
         handleEnter(e, rows);
-
+      
       } else if(e.key === 'Backspace' && !isEditing) {
         handleBackspace(e);
+      } else if(e.key === 'Tab') {
+        handleTab(e, cols);
+      } else if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'c') {
+        handleCopy()
+      } else if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'v') {
+        handlePaste()
       }
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -119,7 +126,6 @@ export default function App() {
       const bounds = canvas.getBoundingClientRect();
       const {row, col} = mouseCoordToSheetCoord(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, cellHeight, cellWidth);
       dragToActiveRange(row, col, rows, cols);
-      // clickActivate(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, rows, cols, cellHeight, cellWidth, isEditing);
     };
 
     window.addEventListener('mousemove', handleMove);

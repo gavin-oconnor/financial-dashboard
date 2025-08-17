@@ -1,6 +1,4 @@
-import { getCell, parseCell } from "./Services";
 import { useSpreadsheetStore } from "./store/spreadsheetStore";
-import type { Coordinate } from "./Types";
 
 export const clickActivate = (row: number, col: number, rows: number, cols: number) => {
     // Calculate position relative to canvas
@@ -21,7 +19,6 @@ export const dblClickActivateEditing = (row: number, col: number, rows: number, 
         if(cell && cell.rawValue) {
           setEditingValue(cell.rawValue.toString())
         }
-        console.log(cellData);
     }
 }
 
@@ -40,6 +37,4 @@ export const dragToActiveRange = (row: number, col: number, rows: number, cols: 
     right: Math.max(activeCell.col,activeRangeCol),
   }
   setActiveRange(newActiveRange);
-  
-
 }

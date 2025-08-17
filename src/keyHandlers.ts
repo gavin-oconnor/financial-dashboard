@@ -1,6 +1,8 @@
 import type { Key } from "react";
 import { getCell, parseCell } from "./Services";
 import { useSpreadsheetStore } from "./store/spreadsheetStore";
+import type { Cell, ClipboardPointer } from "./Types";
+import { isCellCoordinate } from "./TypeHelpers";
 
 export const handleArrowDown = (e: KeyboardEvent, rows: number) => {
   e.preventDefault();
@@ -31,7 +33,7 @@ export const handleArrowDown = (e: KeyboardEvent, rows: number) => {
   }
 }
 
-export const handleArrowUp = (e: KeyboardEvent, rows: number) => {
+export const handleArrowUp = (e: KeyboardEvent) => {
   e.preventDefault();
   const { activeRange, activeCell } = useSpreadsheetStore.getState();
   const setActiveRange = useSpreadsheetStore.getState().setActiveRange;
@@ -100,7 +102,6 @@ export const handleArrowLeft = (e: KeyboardEvent) => {
       setActiveRange(newActiveRange);
       } else {
       if(activeRange && activeRange.right > activeCell.col) {
-        console.log(activeCell.col - activeRange.right)
         if(activeRange.right - activeCell.col === 1 && activeRange.top === activeCell.row && activeRange.bottom === activeCell.row) {
           setActiveRange(null);
         } else {
@@ -127,22 +128,92 @@ export const handleInputKey = (e: KeyboardEvent) => {
 }
 
 export const handleEnter = (e: KeyboardEvent, rows: number) => {
-  console.log("calling handleEnter");
-  const { setCellData, activeCell, editingValue, setIsEditing, setEditingValue, setActiveCell} = useSpreadsheetStore.getState();
+  const { cellData, setCellData, activeCell, editingValue, setIsEditing, setEditingValue, setActiveCell, isEditing, activeRange} = useSpreadsheetStore.getState();
   e.preventDefault();
-  const key = `${activeCell.row},${activeCell.col}`;
-  setCellData((prev) => {
-    const newData = new Map(prev);
-    newData.set(key, parseCell(editingValue));
-    return newData;
-  });
-  setIsEditing(false);
-  setEditingValue('')
+  console.log(cellData);
+  if(isEditing) {
+      const key = `${activeCell.row},${activeCell.col}`;
+    setCellData((prev) => {
+      const newData = new Map(prev);
+      newData.set(key, parseCell(editingValue));
+      return newData;
+    });
+    setIsEditing(false);
+    setEditingValue('')
+  }
   // optionally move to the next cell
-  setActiveCell({
+  if(activeRange) {
+    if(activeCell.row === activeRange.bottom) {
+      if(activeCell.col === activeRange.right) {
+         // bottom right
+        setActiveCell({
+          col: activeRange.left,
+          row: activeRange.top,
+        });
+      } else {
+        // bottom, but not far right
+         setActiveCell({
+          col: activeCell.col + 1,
+          row: activeRange.top,
+        });
+      }
+    } else {
+      // not bottom
+      setActiveCell({
+          col: activeCell.col,
+          row: activeCell.row + 1,
+        });
+    }
+  } else {
+    setActiveCell({
     col: activeCell.col,
     row: Math.min(activeCell.row + 1, rows - 1),
   });
+  }
+}
+
+export const handleTab = (e: KeyboardEvent, cols: number) => {
+  const { setCellData, activeCell, editingValue, setIsEditing, setEditingValue, setActiveCell, isEditing, activeRange} = useSpreadsheetStore.getState();
+  e.preventDefault();
+  if(isEditing) {
+      const key = `${activeCell.row},${activeCell.col}`;
+    setCellData((prev) => {
+      const newData = new Map(prev);
+      newData.set(key, parseCell(editingValue));
+      return newData;
+    });
+    setIsEditing(false);
+    setEditingValue('')
+  }
+  // optionally move to the next cell
+  if(activeRange) {
+    if(activeCell.col === activeRange.right) {
+      if(activeCell.row === activeRange.bottom) {
+         // bottom right
+        setActiveCell({
+          col: activeRange.left,
+          row: activeRange.top,
+        });
+      } else {
+        // far right, but not bottom
+         setActiveCell({
+          col: activeRange.left,
+          row: activeCell.row + 1,
+        });
+      }
+    } else {
+      // not far right
+      setActiveCell({
+          col: activeCell.col + 1,
+          row: activeCell.row,
+        });
+    }
+  } else {
+    setActiveCell({
+    col: Math.min(activeCell.col + 1, cols - 1),
+    row: activeCell.row
+  });
+  }
 }
 
 export const handleBackspace = (e: KeyboardEvent) => {
@@ -166,4 +237,69 @@ export const handleBackspace = (e: KeyboardEvent) => {
     return newData;
   });
 }
+}
+
+export const handleCopy = () => {
+  const {activeCell, activeRange, setClipboardPointer} = useSpreadsheetStore.getState();
+  if(activeRange) {
+    // copy range
+    const newClipboardPointer: ClipboardPointer = {
+      srcRange: {...activeRange},
+      copyActive: true,
+      isCut: false,
+    }
+    setClipboardPointer(newClipboardPointer);
+  } else {
+    const newClipboardPointer: ClipboardPointer = {
+      srcRange: {...activeCell},
+      copyActive: true,
+      isCut: false,
+    }
+    setClipboardPointer(newClipboardPointer);
+  }
+}
+
+export const handlePaste = () => {
+  const {clipboardPointer, setCellData, activeCell, cellData} = useSpreadsheetStore.getState();
+  if(!clipboardPointer) { return ;}
+  console.log(clipboardPointer);
+  setCellData((prev) => {
+      if(isCellCoordinate(clipboardPointer.srcRange)) {
+        const keyBeingCopied = `${clipboardPointer.srcRange.row},${clipboardPointer.srcRange.col}`;
+        if(cellData.has(keyBeingCopied)) {
+          const newData = new Map(prev);
+        const key = `${activeCell.row},${activeCell.col}`;
+        const partial = newData.get(keyBeingCopied);
+        const cell: Cell = {
+          rawValue: partial?.rawValue ?? null,
+          dataType: partial?.dataType ?? "TEXT", // whatever your default is
+          value: partial?.value ?? "",
+        };
+        newData.set(key, cell);
+        return newData;
+        }
+      } else {
+        const newData = new Map(prev);
+        for(let row = clipboardPointer.srcRange.top; row <= clipboardPointer.srcRange.bottom; row++) {
+          for(let col = clipboardPointer.srcRange.left; col <= clipboardPointer.srcRange.right; col++) {
+            const rowOffset = row - clipboardPointer.srcRange.top;
+            const colOffset = col - clipboardPointer.srcRange.left;
+            const keyBeingCopied = `${row},${col}`;
+            if(cellData.has(keyBeingCopied)) {
+          
+            const key = `${activeCell.row+rowOffset},${activeCell.col+colOffset}`;
+            const partial = newData.get(keyBeingCopied);
+            const cell: Cell = {
+              rawValue: partial?.rawValue ?? null,
+              dataType: partial?.dataType ?? "TEXT", // whatever your default is
+              value: partial?.value ?? "",
+            };
+            newData.set(key, cell);
+              }
+          }
+        }
+        return newData;
+      }
+      
+    });
 }

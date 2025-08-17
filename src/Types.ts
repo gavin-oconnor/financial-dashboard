@@ -28,3 +28,9 @@ export type Bounds = {
   left: number;
   right: number;
 };
+
+export type ClipboardPointer = {
+  srcRange: Bounds | CellCoordinate;
+  isCut: boolean;
+  copyActive: boolean;
+}
