@@ -5,8 +5,8 @@ import { handleArrowDown, handleArrowLeft, handleArrowRight, handleArrowUp, hand
 import type { Bounds, Cell, CellCoordinate, Coordinate, Dimension } from './Types.ts';
 import { useSpreadsheetStore } from './store/spreadsheetStore.ts';
 import { drawCanvas } from './drawService.ts';
-import { clickActivate, dblClickActivateEditing } from './clickHandlers.ts';
-import { parseCell } from './Services.ts';
+import { clickActivate, dblClickActivateEditing, dragToActiveRange } from './clickHandlers.ts';
+import { mouseCoordToSheetCoord, parseCell } from './Services.ts';
 
 const cellWidth = 100;
 const cellHeight = 21;
@@ -23,6 +23,7 @@ export default function App() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isDraggingRef = useRef<boolean>(false);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const {isEditing } = useSpreadsheetStore.getState();
@@ -68,7 +69,8 @@ export default function App() {
     const handleDoubleClick = (e: MouseEvent) => {
       e.preventDefault();
       const bounds = canvas.getBoundingClientRect();
-      dblClickActivateEditing(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, rows, cols, cellHeight, cellWidth);
+      const {row, col} = mouseCoordToSheetCoord(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, cellHeight, cellWidth);
+      dblClickActivateEditing(row, col, rows, cols);
     };
 
     window.addEventListener('dblclick', handleDoubleClick);
@@ -99,14 +101,42 @@ export default function App() {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const bounds = canvas.getBoundingClientRect();
-      const { isEditing } = useSpreadsheetStore.getState();
-      console.log(isEditing);
-      clickActivate(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, rows, cols, cellHeight, cellWidth, isEditing);
+      const {row, col} = mouseCoordToSheetCoord(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, cellHeight, cellWidth);
+      clickActivate(row, col, rows, cols);
+      isDraggingRef.current = true;
     };
 
-    window.addEventListener('click', handleClick);
-    return () => window.removeEventListener('click', handleClick);
+    window.addEventListener('mousedown', handleClick);
+    return () => window.removeEventListener('mousedown', handleClick);
   }, [scrollOffset]);
+
+  useEffect(() => {
+    const handleMove = (e: MouseEvent) => {
+      // Get canvas bounding box
+      if(!isDraggingRef.current) { return; }
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const bounds = canvas.getBoundingClientRect();
+      const {row, col} = mouseCoordToSheetCoord(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, cellHeight, cellWidth);
+      dragToActiveRange(row, col, rows, cols);
+      // clickActivate(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, rows, cols, cellHeight, cellWidth, isEditing);
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    return () => window.removeEventListener('mousemove', handleMove);
+  }, [scrollOffset]);
+
+    useEffect(() => {
+    const handleMouseUp = () => {
+      // Get canvas bounding box
+      isDraggingRef.current = false;
+    };
+
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, [scrollOffset]);
+
+
 
   // Redraw canvas on scroll/resize
   useEffect(() => {

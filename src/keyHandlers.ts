@@ -100,7 +100,6 @@ export const handleArrowLeft = (e: KeyboardEvent) => {
       setActiveRange(newActiveRange);
       } else {
       if(activeRange && activeRange.right > activeCell.col) {
-        console.log("HERE")
         console.log(activeCell.col - activeRange.right)
         if(activeRange.right - activeCell.col === 1 && activeRange.top === activeCell.row && activeRange.bottom === activeCell.row) {
           setActiveRange(null);

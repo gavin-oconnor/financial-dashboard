@@ -2,43 +2,16 @@ import { getCell, parseCell } from "./Services";
 import { useSpreadsheetStore } from "./store/spreadsheetStore";
 import type { Coordinate } from "./Types";
 
-export const clickActivate = (e: MouseEvent, bounds: DOMRect, scrollOffset: Coordinate, rowHeaderWidth: number, columnHeaderHeight: number, rows: number, cols: number, cellHeight: number, cellWidth: number, isEditing: boolean) => {
+export const clickActivate = (row: number, col: number, rows: number, cols: number) => {
     // Calculate position relative to canvas
-          const x = e.clientX - bounds.left;
-          const y = e.clientY - bounds.top;
-          console.log("callingClick")
-          console.log(isEditing);
-    
-          // Adjust for scroll offsets and header sizes
-          const col = Math.floor((x - rowHeaderWidth + scrollOffset.x) / cellWidth);
-          const row = Math.floor((y - columnHeaderHeight + scrollOffset.y) / cellHeight);
-    
           if (row >= 0 && row < rows && col >= 0 && col < cols) {
             const { setActiveCell, setActiveRange } = useSpreadsheetStore.getState();
-            // because of the onBlur method on cell input field, this code never gets ran
-            // if (isEditing) {
-            //   console.log("we are in fact editing")
-            //   e.preventDefault();
-            //   const key = `${activeCell.row},${activeCell.col}`;
-            //   setCellData((prev) => {
-            //     const newData = new Map(prev);
-            //     newData.set(key, parseCell(editingValue));
-            //     return newData;
-            //   });
-            //   setIsEditing(false);
-            //   setEditingValue('')
-            // }
             setActiveRange(null);
             setActiveCell({ row, col });
           }
 }
 
-export const dblClickActivateEditing = (e: MouseEvent, bounds: DOMRect, scrollOffset: Coordinate, rowHeaderWidth: number, columnHeaderHeight: number, rows: number, cols: number, cellHeight: number, cellWidth: number) => {
-    const x = e.clientX - bounds.left;
-    const y = e.clientY - bounds.top;
-    
-    const col = Math.floor((x + scrollOffset.x - rowHeaderWidth) / cellWidth);
-    const row = Math.floor((y + scrollOffset.y - columnHeaderHeight) / cellHeight);
+export const dblClickActivateEditing = (row: number, col: number, rows: number, cols: number) => {
     
     if (row >= 0 && row < rows && col >= 0 && col < cols) {
         const { setActiveCell, setIsEditing, cellData, setEditingValue } = useSpreadsheetStore.getState();
@@ -50,4 +23,23 @@ export const dblClickActivateEditing = (e: MouseEvent, bounds: DOMRect, scrollOf
         }
         console.log(cellData);
     }
+}
+
+export const dragToActiveRange = (row: number, col: number, rows: number, cols: number) => {
+  const activeRangeRow: number = Math.min(Math.max(row, 0), rows-1);
+  const activeRangeCol: number = Math.min(Math.max(col, 0), cols-1);
+  const { activeCell, setActiveRange } = useSpreadsheetStore.getState();
+  if(activeRangeCol === activeCell.col && activeRangeRow === activeCell.row) {
+    setActiveRange(null);
+    return;
+  }
+  const newActiveRange = {
+    top: Math.min(activeCell.row, activeRangeRow),
+    bottom: Math.max(activeCell.row,activeRangeRow),
+    left: Math.min(activeCell.col, activeRangeCol),
+    right: Math.max(activeCell.col,activeRangeCol),
+  }
+  setActiveRange(newActiveRange);
+  
+
 }

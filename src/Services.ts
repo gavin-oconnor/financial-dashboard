@@ -1,6 +1,6 @@
 import { defaultFns, isErr, runFormula, type Context } from "./Formulas";
 import { useSpreadsheetStore } from "./store/spreadsheetStore";
-import type { Cell } from "./Types";
+import type { Cell, Coordinate } from "./Types";
 
 
 export const isNumeric = (str: string): boolean => {
@@ -81,4 +81,13 @@ export const getCell = (cellRef: string) => {
       return parseFloat(cell.value)
     }
     return 0;
+  }
+
+  export const mouseCoordToSheetCoord = (e: MouseEvent, bounds: DOMRect, scrollOffset: Coordinate, rowHeaderWidth: number, columnHeaderHeight: number, cellHeight: number, cellWidth: number) => {
+    const x = e.clientX - bounds.left;
+    const y = e.clientY - bounds.top;
+    
+    const col = Math.floor((x + scrollOffset.x - rowHeaderWidth) / cellWidth);
+    const row = Math.floor((y + scrollOffset.y - columnHeaderHeight) / cellHeight);
+    return {row, col};
   }
