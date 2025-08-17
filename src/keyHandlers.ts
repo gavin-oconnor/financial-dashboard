@@ -89,7 +89,7 @@ export const handleArrowRight = (e: KeyboardEvent, cols: number) => {
   }
 }
 
-export const handleArrowLeft = (e: KeyboardEvent, cols: number) => {
+export const handleArrowLeft = (e: KeyboardEvent) => {
   e.preventDefault();
   const { activeRange, activeCell } = useSpreadsheetStore.getState();
   const setActiveRange = useSpreadsheetStore.getState().setActiveRange;
@@ -100,7 +100,9 @@ export const handleArrowLeft = (e: KeyboardEvent, cols: number) => {
       setActiveRange(newActiveRange);
       } else {
       if(activeRange && activeRange.right > activeCell.col) {
-        if(activeRange.right - activeCell.col === 1) {
+        console.log("HERE")
+        console.log(activeCell.col - activeRange.right)
+        if(activeRange.right - activeCell.col === 1 && activeRange.top === activeCell.row && activeRange.bottom === activeCell.row) {
           setActiveRange(null);
         } else {
           setActiveRange({...activeRange, right: activeRange.right-1});
