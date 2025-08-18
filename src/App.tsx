@@ -1,171 +1,223 @@
 // App.tsx
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react'
 import './App.css'
-import { handleArrowDown, handleArrowLeft, handleArrowRight, handleArrowUp, handleBackspace, handleCopy, handleEnter, handleInputKey, handlePaste, handleTab } from './keyHandlers.ts'
-import type { Bounds, Cell, CellCoordinate, Coordinate, Dimension } from './Types.ts';
-import { useSpreadsheetStore } from './store/spreadsheetStore.ts';
-import { drawCanvas } from './drawService.ts';
-import { clickActivate, dblClickActivateEditing, dragToActiveRange } from './clickHandlers.ts';
-import { mouseCoordToSheetCoord, parseCell } from './Services.ts';
+import {
+  handleArrowDown,
+  handleArrowLeft,
+  handleArrowRight,
+  handleArrowUp,
+  handleBackspace,
+  handleCopy,
+  handleCut,
+  handleEnter,
+  handleInputKey,
+  handlePaste,
+  handleTab,
+} from './keyHandlers.ts'
+import type { Bounds, Cell, CellCoordinate, Coordinate, Dimension } from './Types.ts'
+import { useSpreadsheetStore } from './store/spreadsheetStore.ts'
+import { drawCanvas } from './drawService.ts'
+import { clickActivate, dblClickActivateEditing, dragToActiveRange } from './clickHandlers.ts'
+import { mouseCoordToSheetCoord, parseCell } from './Services.ts'
 
-const cellWidth = 100;
-const cellHeight = 21;
-const rows = 100;
-const cols = 100;
-const columnHeaderHeight = 21;
-const rowHeaderWidth = 60;
+const cellWidth = 100
+const cellHeight = 21
+const rows = 100
+const cols = 100
+const columnHeaderHeight = 21
+const rowHeaderWidth = 60
 
 export default function App() {
+  const [viewportSize, setViewportSize] = useState<Dimension>({ width: 0, height: 0 })
+  const [scrollOffset, setScrollOffset] = useState<Coordinate>({ x: 0, y: 0 })
+  const spreadsheetStore = useSpreadsheetStore()
 
-  const [viewportSize, setViewportSize] = useState<Dimension>({width:0, height:0});
-  const [scrollOffset, setScrollOffset] = useState<Coordinate>({x:0,y:0});
-  const spreadsheetStore = useSpreadsheetStore();
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isDraggingRef = useRef<boolean>(false);
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [isDragging, setIsDragging] = useState<boolean>(false)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const {isEditing } = useSpreadsheetStore.getState();
-      console.log(e.key);
+      const { isEditing } = useSpreadsheetStore.getState()
       if (e.key === 'ArrowDown') {
-        !isEditing && handleArrowDown(e, rows);
-      } else if(e.key === 'ArrowUp') {
-        !isEditing && handleArrowUp(e);
-      } else if(e.key === 'ArrowRight') {
-        !isEditing && handleArrowRight(e, cols);
-      } else if(e.key === 'ArrowLeft') {
-        !isEditing && handleArrowLeft(e);
-      } else if(e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditing) {
-        handleInputKey(e);
+        !isEditing && handleArrowDown(e, rows)
+      } else if (e.key === 'ArrowUp') {
+        !isEditing && handleArrowUp(e)
+      } else if (e.key === 'ArrowRight') {
+        !isEditing && handleArrowRight(e, cols)
+      } else if (e.key === 'ArrowLeft') {
+        !isEditing && handleArrowLeft(e)
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditing) {
+        handleInputKey(e)
       } else if (e.key === 'Enter') {
-        handleEnter(e, rows);
-      
-      } else if(e.key === 'Backspace' && !isEditing) {
-        handleBackspace(e);
-      } else if(e.key === 'Tab') {
-        handleTab(e, cols);
-      } else if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'c') {
+        handleEnter(e, rows)
+      } else if (e.key === 'Backspace' && !isEditing) {
+        handleBackspace(e)
+      } else if (e.key === 'Tab') {
+        handleTab(e, cols)
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'c') {
         handleCopy()
-      } else if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'v') {
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'x') {
+        handleCut()
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'v') {
         handlePaste()
       }
     }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   useEffect(() => {
-    const container = scrollRef.current;
-    if (!container) return;
+    const container = scrollRef.current
+    if (!container) return
 
     const updateSize = () => {
       setViewportSize({
         width: container.clientWidth,
         height: container.clientHeight,
-      });
-    };
+      })
+    }
 
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
-  }, []);
+    updateSize()
+    window.addEventListener('resize', updateSize)
+    return () => window.removeEventListener('resize', updateSize)
+  }, [])
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvas = canvasRef.current
+    if (!canvas) return
     const handleDoubleClick = (e: MouseEvent) => {
-      e.preventDefault();
-      const bounds = canvas.getBoundingClientRect();
-      const {row, col} = mouseCoordToSheetCoord(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, cellHeight, cellWidth);
-      dblClickActivateEditing(row, col, rows, cols);
-    };
+      e.preventDefault()
+      const bounds = canvas.getBoundingClientRect()
+      const { row, col } = mouseCoordToSheetCoord(
+        e,
+        bounds,
+        scrollOffset,
+        rowHeaderWidth,
+        columnHeaderHeight,
+        cellHeight,
+        cellWidth
+      )
+      dblClickActivateEditing(row, col, rows, cols)
+    }
 
-    window.addEventListener('dblclick', handleDoubleClick);
-    return () => window.removeEventListener('dblclick', handleDoubleClick);
-  }, [scrollOffset]);
+    window.addEventListener('dblclick', handleDoubleClick)
+    return () => window.removeEventListener('dblclick', handleDoubleClick)
+  }, [scrollOffset])
 
   // Listen to scroll
   useEffect(() => {
-    const container = scrollRef.current;
-    if (!container) return;
+    const container = scrollRef.current
+    if (!container) return
 
     const handleScroll = () => {
-      const { isEditing } = useSpreadsheetStore.getState();
+      const { isEditing } = useSpreadsheetStore.getState()
       !isEditing &&
         setScrollOffset({
           x: container.scrollLeft,
           y: container.scrollTop,
-        });
-    };
+        })
+    }
 
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
-  
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [])
+
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       // Get canvas bounding box
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const bounds = canvas.getBoundingClientRect();
-      const {row, col} = mouseCoordToSheetCoord(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, cellHeight, cellWidth);
-      clickActivate(row, col, rows, cols);
-      isDraggingRef.current = true;
-    };
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const bounds = canvas.getBoundingClientRect()
+      const { row, col } = mouseCoordToSheetCoord(
+        e,
+        bounds,
+        scrollOffset,
+        rowHeaderWidth,
+        columnHeaderHeight,
+        cellHeight,
+        cellWidth
+      )
+      clickActivate(row, col, rows, cols)
+      // isDraggingRef.current = true
+      setIsDragging(true)
+    }
 
-    window.addEventListener('mousedown', handleClick);
-    return () => window.removeEventListener('mousedown', handleClick);
-  }, [scrollOffset]);
+    window.addEventListener('mousedown', handleClick)
+    return () => window.removeEventListener('mousedown', handleClick)
+  }, [scrollOffset])
 
   useEffect(() => {
     const handleMove = (e: MouseEvent) => {
       // Get canvas bounding box
-      if(!isDraggingRef.current) { return; }
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const bounds = canvas.getBoundingClientRect();
-      const {row, col} = mouseCoordToSheetCoord(e, bounds, scrollOffset, rowHeaderWidth, columnHeaderHeight, cellHeight, cellWidth);
-      dragToActiveRange(row, col, rows, cols);
-    };
+      // if (!isDraggingRef.current) {
+      //   return
+      // }
+      if (!isDragging) {
+        return
+      }
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const bounds = canvas.getBoundingClientRect()
+      const { row, col } = mouseCoordToSheetCoord(
+        e,
+        bounds,
+        scrollOffset,
+        rowHeaderWidth,
+        columnHeaderHeight,
+        cellHeight,
+        cellWidth
+      )
+      dragToActiveRange(row, col, rows, cols)
+    }
 
-    window.addEventListener('mousemove', handleMove);
-    return () => window.removeEventListener('mousemove', handleMove);
-  }, [scrollOffset]);
+    window.addEventListener('mousemove', handleMove)
+    return () => window.removeEventListener('mousemove', handleMove)
+  }, [scrollOffset, isDragging])
 
-    useEffect(() => {
+  useEffect(() => {
     const handleMouseUp = () => {
       // Get canvas bounding box
-      isDraggingRef.current = false;
-    };
+      // isDraggingRef.current = false
+      setIsDragging(false)
+    }
 
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => window.removeEventListener('mouseup', handleMouseUp);
-  }, [scrollOffset]);
-
-
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => window.removeEventListener('mouseup', handleMouseUp)
+  }, [scrollOffset])
 
   // Redraw canvas on scroll/resize
   useEffect(() => {
-    if (viewportSize.width === 0 || viewportSize.height === 0) return;
+    if (viewportSize.width === 0 || viewportSize.height === 0) return
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvas = canvasRef.current
+    if (!canvas) return
 
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = viewportSize.width * dpr;
-    canvas.height = viewportSize.height * dpr;
-    canvas.style.width = `${viewportSize.width}px`;
-    canvas.style.height = `${viewportSize.height}px`;
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = viewportSize.width * dpr
+    canvas.height = viewportSize.height * dpr
+    canvas.style.width = `${viewportSize.width}px`
+    canvas.style.height = `${viewportSize.height}px`
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
 
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    drawCanvas(ctx, scrollOffset, viewportSize, cellWidth, cellHeight, rows, cols, rowHeaderWidth, columnHeaderHeight);
-  }, [scrollOffset, viewportSize, spreadsheetStore]);
-  const { isEditing, activeCell, setIsEditing, setEditingValue, setCellData, editingValue } = useSpreadsheetStore();
+    drawCanvas(
+      ctx,
+      scrollOffset,
+      viewportSize,
+      cellWidth,
+      cellHeight,
+      rows,
+      cols,
+      rowHeaderWidth,
+      columnHeaderHeight,
+      isDragging
+    )
+  }, [scrollOffset, viewportSize, spreadsheetStore, isDragging])
+  const { isEditing, activeCell, setIsEditing, setEditingValue, setCellData, editingValue } =
+    useSpreadsheetStore()
   return (
     <>
       {/* Fixed Ribbon */}
@@ -224,14 +276,8 @@ export default function App() {
           value={editingValue}
           onChange={(e) => setEditingValue(e.target.value)}
           onBlur={() => {
-            const key = `${activeCell.row},${activeCell.col}`;
-            setCellData((prev) => {
-              const newData = new Map(prev);
-              newData.set(key, parseCell(editingValue));
-              return newData;
-            });
-            setIsEditing(false);
-            setEditingValue('');
+            setIsEditing(false)
+            setEditingValue('')
           }}
           autoFocus
           style={{
@@ -249,5 +295,5 @@ export default function App() {
         />
       )}
     </>
-  );
+  )
 }

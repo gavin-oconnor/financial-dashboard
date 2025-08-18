@@ -1,30 +1,31 @@
-import { create } from 'zustand';
-import type { Bounds, Cell, CellCoordinate, ClipboardPointer } from '../Types';
+import { create } from 'zustand'
+import type { Bounds, Cell, CellCoordinate, ClipboardPointer } from '../Types'
 
 interface SpreadsheetState {
-  activeCell: CellCoordinate;
-  setActiveCell: (coord: CellCoordinate) => void;
+  activeCell: CellCoordinate
+  setActiveCell: (coord: CellCoordinate) => void
 
-  cellData: Map<string, Cell>;
-  setCellData: (updater: (prev: Map<string, Cell>) => Map<string, Cell>) => void;
+  cellData: Map<string, Cell>
+  setCellData: (updater: (prev: Map<string, Cell>) => Map<string, Cell>) => void
 
-  isEditing: boolean;
-  setIsEditing: (val: boolean) => void;
+  isEditing: boolean
+  setIsEditing: (val: boolean) => void
 
-  editingValue: string;
-  setEditingValue: (val: string) => void;
+  editingValue: string
+  setEditingValue: (val: string) => void
 
-  activeRange: Bounds | null;
-  setActiveRange: (range: Bounds | null) => void;
+  activeRange: Bounds | null
+  setActiveRange: (range: Bounds | null) => void
 
-  clipboardPointer: ClipboardPointer | null;
-  setClipboardPointer: (pointer: ClipboardPointer | null) => void;
+  clipboardPointer: ClipboardPointer | null
+  setClipboardPointer: (pointer: ClipboardPointer | null) => void
 }
 
 export const useSpreadsheetStore = create<SpreadsheetState>((set) => ({
   activeCell: { row: 1, col: 1 },
   setActiveCell: (coord) => {
-    set({ activeCell: coord })},
+    set({ activeCell: coord })
+  },
 
   cellData: new Map(),
   setCellData: (updater) =>
@@ -42,5 +43,5 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set) => ({
   setActiveRange: (range) => set({ activeRange: range }),
 
   clipboardPointer: null,
-  setClipboardPointer: (pointer) => set({clipboardPointer: pointer})
-}));
+  setClipboardPointer: (pointer) => set({ clipboardPointer: pointer }),
+}))
