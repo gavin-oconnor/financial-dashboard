@@ -10,15 +10,16 @@ import {
   handleCopy,
   handleCut,
   handleEnter,
+  handleEscape,
   handleInputKey,
   handlePaste,
   handleTab,
 } from './keyHandlers.ts'
-import type { Bounds, Cell, CellCoordinate, Coordinate, Dimension } from './Types.ts'
+import type { Coordinate, Dimension } from './Types.ts'
 import { useSpreadsheetStore } from './store/spreadsheetStore.ts'
 import { drawCanvas } from './drawService.ts'
 import { clickActivate, dblClickActivateEditing, dragToActiveRange } from './clickHandlers.ts'
-import { mouseCoordToSheetCoord, parseCell } from './Services.ts'
+import { mouseCoordToSheetCoord } from './Services.ts'
 
 const cellWidth = 100
 const cellHeight = 21
@@ -49,17 +50,19 @@ export default function App() {
       } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditing) {
         handleInputKey(e)
       } else if (e.key === 'Enter') {
-        handleEnter(e, rows)
+        handleEnter(e, rows, e.shiftKey)
       } else if (e.key === 'Backspace' && !isEditing) {
         handleBackspace(e)
       } else if (e.key === 'Tab') {
-        handleTab(e, cols)
+        handleTab(e, cols, e.shiftKey)
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'c') {
         handleCopy()
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'x') {
         handleCut()
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'v') {
         handlePaste()
+      } else if (e.key === 'Escape') {
+        handleEscape(e)
       }
     }
     window.addEventListener('keydown', handleKeyDown)

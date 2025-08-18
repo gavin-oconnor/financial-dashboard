@@ -159,9 +159,8 @@ export const handleInputKey = (e: KeyboardEvent) => {
   setEditingValue(e.key)
 }
 
-export const handleEnter = (e: KeyboardEvent, rows: number) => {
+export const handleEnter = (e: KeyboardEvent, rows: number, shift: boolean) => {
   const {
-    cellData,
     setCellData,
     activeCell,
     editingValue,
@@ -172,7 +171,6 @@ export const handleEnter = (e: KeyboardEvent, rows: number) => {
     activeRange,
   } = useSpreadsheetStore.getState()
   e.preventDefault()
-  console.log(cellData)
   if (isEditing) {
     const key = `${activeCell.row},${activeCell.col}`
     setCellData((prev) => {
@@ -185,85 +183,146 @@ export const handleEnter = (e: KeyboardEvent, rows: number) => {
   }
   // optionally move to the next cell
   if (activeRange) {
-    if (activeCell.row === activeRange.bottom) {
-      if (activeCell.col === activeRange.right) {
-        // bottom right
-        setActiveCell({
-          col: activeRange.left,
-          row: activeRange.top,
-        })
+    if (shift) {
+      if (activeCell.row === activeRange.top) {
+        if (activeCell.col === activeRange.left) {
+          // top left
+          setActiveCell({
+            col: activeRange.right,
+            row: activeRange.bottom,
+          })
+        } else {
+          // top, but not far left
+          setActiveCell({
+            col: activeCell.col - 1,
+            row: activeRange.bottom,
+          })
+        }
       } else {
-        // bottom, but not far right
+        // not top
         setActiveCell({
-          col: activeCell.col + 1,
-          row: activeRange.top,
+          col: activeCell.col,
+          row: activeCell.row - 1,
         })
       }
     } else {
-      // not bottom
-      setActiveCell({
-        col: activeCell.col,
-        row: activeCell.row + 1,
-      })
-    }
-  } else {
-    setActiveCell({
-      col: activeCell.col,
-      row: Math.min(activeCell.row + 1, rows - 1),
-    })
-  }
-}
-
-export const handleTab = (e: KeyboardEvent, cols: number) => {
-  const {
-    setCellData,
-    activeCell,
-    editingValue,
-    setIsEditing,
-    setEditingValue,
-    setActiveCell,
-    isEditing,
-    activeRange,
-  } = useSpreadsheetStore.getState()
-  e.preventDefault()
-  if (isEditing) {
-    const key = `${activeCell.row},${activeCell.col}`
-    setCellData((prev) => {
-      const newData = new Map(prev)
-      newData.set(key, parseCell(editingValue))
-      return newData
-    })
-    setIsEditing(false)
-    setEditingValue('')
-  }
-  // optionally move to the next cell
-  if (activeRange) {
-    if (activeCell.col === activeRange.right) {
       if (activeCell.row === activeRange.bottom) {
-        // bottom right
-        setActiveCell({
-          col: activeRange.left,
-          row: activeRange.top,
-        })
+        if (activeCell.col === activeRange.right) {
+          // bottom right
+          setActiveCell({
+            col: activeRange.left,
+            row: activeRange.top,
+          })
+        } else {
+          // bottom, but not far right
+          setActiveCell({
+            col: activeCell.col + 1,
+            row: activeRange.top,
+          })
+        }
       } else {
-        // far right, but not bottom
+        // not bottom
         setActiveCell({
-          col: activeRange.left,
+          col: activeCell.col,
           row: activeCell.row + 1,
         })
       }
-    } else {
-      // not far right
+    }
+  } else {
+    if (shift) {
       setActiveCell({
-        col: activeCell.col + 1,
+        col: activeCell.col,
+        row: Math.max(activeCell.row - 1, 0),
+      })
+    } else {
+      setActiveCell({
+        col: activeCell.col,
+        row: Math.min(activeCell.row + 1, rows - 1),
+      })
+    }
+  }
+}
+
+export const handleTab = (e: KeyboardEvent, cols: number, shift: boolean) => {
+  const {
+    setCellData,
+    activeCell,
+    editingValue,
+    setIsEditing,
+    setEditingValue,
+    setActiveCell,
+    isEditing,
+    activeRange,
+  } = useSpreadsheetStore.getState()
+  e.preventDefault()
+  if (isEditing) {
+    const key = `${activeCell.row},${activeCell.col}`
+    setCellData((prev) => {
+      const newData = new Map(prev)
+      newData.set(key, parseCell(editingValue))
+      return newData
+    })
+    setIsEditing(false)
+    setEditingValue('')
+  }
+  if (activeRange) {
+    if (shift) {
+      if (activeCell.col === activeRange.left) {
+        if (activeCell.row === activeRange.top) {
+          // top left
+          setActiveCell({
+            col: activeRange.right,
+            row: activeRange.bottom,
+          })
+        } else {
+          // far left, but not bottom
+          setActiveCell({
+            col: activeRange.right,
+            row: activeCell.row - 1,
+          })
+        }
+      } else {
+        // not far left
+        setActiveCell({
+          col: activeCell.col - 1,
+          row: activeCell.row,
+        })
+      }
+    } else {
+      if (activeCell.col === activeRange.right) {
+        if (activeCell.row === activeRange.bottom) {
+          // bottom right
+          setActiveCell({
+            col: activeRange.left,
+            row: activeRange.top,
+          })
+        } else {
+          // far right, but not bottom
+          setActiveCell({
+            col: activeRange.left,
+            row: activeCell.row + 1,
+          })
+        }
+      } else {
+        // not far right
+        setActiveCell({
+          col: activeCell.col + 1,
+          row: activeCell.row,
+        })
+      }
+    }
+  } else {
+    if (shift) {
+      setActiveCell({
+        col: Math.max(0, activeCell.col - 1),
+        row: activeCell.row,
+      })
+    } else {
+      setActiveCell({
+        col: Math.min(activeCell.col + 1, cols - 1),
         row: activeCell.row,
       })
     }
-  } else {
-    setActiveCell({
-      col: Math.min(activeCell.col + 1, cols - 1),
-      row: activeCell.row,
-    })
   }
 }
 
@@ -449,5 +508,14 @@ export const handlePaste = () => {
       }
       setActiveRange(newActiveRange)
     }
+  }
+}
+
+export const handleEscape = (e: KeyboardEvent) => {
+  e.preventDefault()
+  const { setIsEditing, isEditing, setEditingValue } = useSpreadsheetStore.getState()
+  if (isEditing) {
+    setIsEditing(false)
+    setEditingValue('')
   }
 }
