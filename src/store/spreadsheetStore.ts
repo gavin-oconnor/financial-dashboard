@@ -34,7 +34,15 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set) => ({
     })),
 
   isEditing: false,
-  setIsEditing: (val) => set({ isEditing: val }),
+  setIsEditing: (val) =>
+    set((state) => ({
+      isEditing: val,
+      // if entering edit mode, cancel copy mode
+      clipboardPointer:
+        val && state.clipboardPointer
+          ? { ...state.clipboardPointer, copyActive: false }
+          : state.clipboardPointer,
+    })),
 
   editingValue: '',
   setEditingValue: (val) => set({ editingValue: val }),

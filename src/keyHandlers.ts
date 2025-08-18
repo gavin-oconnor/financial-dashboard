@@ -390,8 +390,14 @@ export const handleCut = () => {
 }
 
 export const handlePaste = () => {
-  const { clipboardPointer, setCellData, activeCell, cellData, setActiveRange } =
-    useSpreadsheetStore.getState()
+  const {
+    clipboardPointer,
+    setCellData,
+    activeCell,
+    cellData,
+    setActiveRange,
+    setClipboardPointer,
+  } = useSpreadsheetStore.getState()
   if (!clipboardPointer) {
     return
   }
@@ -451,7 +457,9 @@ export const handlePaste = () => {
         left: activeCell.col,
         right: activeCell.col + (clipboardPointer.srcRange.right - clipboardPointer.srcRange.left),
       }
+
       setActiveRange(newActiveRange)
+      setClipboardPointer(null)
     }
   } else {
     setCellData((prev) => {
@@ -507,6 +515,7 @@ export const handlePaste = () => {
         right: activeCell.col + (clipboardPointer.srcRange.right - clipboardPointer.srcRange.left),
       }
       setActiveRange(newActiveRange)
+      setClipboardPointer({ ...clipboardPointer, copyActive: false })
     }
   }
 }

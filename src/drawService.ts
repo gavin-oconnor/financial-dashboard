@@ -1,6 +1,7 @@
 import { colIndexToLabel } from './Services'
 import { useSpreadsheetStore } from './store/spreadsheetStore'
-import type { Bounds, Cell, CellCoordinate, Coordinate, Dimension } from './Types'
+import { isBounds } from './TypeHelpers'
+import type { Bounds, Cell, CellCoordinate, ClipboardPointer, Coordinate, Dimension } from './Types'
 
 export const drawCanvas = (
   ctx: CanvasRenderingContext2D,
@@ -14,7 +15,7 @@ export const drawCanvas = (
   columnHeaderHeight: number,
   isDragging: boolean
 ) => {
-  const { cellData, activeCell, activeRange } = useSpreadsheetStore.getState()
+  const { cellData, activeCell, activeRange, clipboardPointer } = useSpreadsheetStore.getState()
 
   const startCol = Math.floor(scrollOffset.x / cellWidth)
   const endCol = Math.min(cols, Math.ceil((scrollOffset.x + viewportSize.width) / cellWidth))
@@ -61,6 +62,16 @@ export const drawCanvas = (
     activeRange
   )
 
+  drawCopyModeRange(
+    ctx,
+    scrollOffset,
+    cellWidth,
+    cellHeight,
+    rowHeaderWidth,
+    columnHeaderHeight,
+    clipboardPointer
+  )
+
   drawRowLabels(ctx, startRow, endRow, scrollOffset, cellHeight, rowHeaderWidth)
   drawColumnLabels(ctx, startCol, endCol, scrollOffset, cellWidth, cellHeight, rowHeaderWidth)
 
@@ -105,7 +116,7 @@ const drawCells = (
         activeRange.left <= col &&
         activeRange.right >= col
       ) {
-        ctx.fillStyle = 'rgb(84, 178, 255, 0.5)'
+        ctx.fillStyle = 'rgb(84, 178, 255, 0.3)'
         ctx.fillRect(x, y, cellWidth, cellHeight)
       }
     }
@@ -221,5 +232,76 @@ const drawActiveRangeBorder = (
       (activeRange.right - activeRange.left + 1) * cellWidth,
       (activeRange.bottom - activeRange.top + 1) * cellHeight
     )
+  }
+}
+
+const drawCopyModeRange = (
+  ctx: CanvasRenderingContext2D,
+  scrollOffset: Coordinate,
+  cellWidth: number,
+  cellHeight: number,
+  rowHeaderWidth: number,
+  columnHeaderHeight: number,
+  clipboardPointer: ClipboardPointer | null
+) => {
+  if (!clipboardPointer || !clipboardPointer.copyActive) {
+    return
+  }
+  if (isBounds(clipboardPointer.srcRange)) {
+    const copyRangeX = clipboardPointer.srcRange.left * cellWidth - scrollOffset.x + rowHeaderWidth
+    const copyRangeY =
+      clipboardPointer.srcRange.top * cellHeight - scrollOffset.y + columnHeaderHeight
+    const copyRangeWidth =
+      (clipboardPointer.srcRange.right - clipboardPointer.srcRange.left + 1) * cellWidth
+    const copyRangeHeight =
+      (clipboardPointer.srcRange.bottom - clipboardPointer.srcRange.top + 1) * cellHeight
+    const dash = 4
+    const gap = 4
+    const offset = 0
+    const p = new Path2D()
+    p.rect(copyRangeX + 0.5, copyRangeY + 0.5, copyRangeWidth - 1, copyRangeHeight - 1) // 0.5 to align to pixel grid for crisp 1px lines
+
+    // Slightly thicker than the normal active-cell border so it fully covers it
+    ctx.lineWidth = 1.5
+
+    // 1) colored dashes
+    ctx.setLineDash([dash, gap])
+    ctx.lineDashOffset = offset
+    ctx.strokeStyle = 'purple'
+    ctx.stroke(p)
+
+    // 2) white dashes, phase-shifted to sit in the gaps
+    ctx.lineDashOffset = offset + dash // shift by one dash length
+    ctx.strokeStyle = '#fff'
+    ctx.stroke(p)
+
+    ctx.restore()
+  } else {
+    const copyRangeX = clipboardPointer.srcRange.col * cellWidth - scrollOffset.x + rowHeaderWidth
+    const copyRangeY =
+      clipboardPointer.srcRange.row * cellHeight - scrollOffset.y + columnHeaderHeight
+    const copyRangeWidth = cellWidth
+    const copyRangeHeight = cellHeight
+    const dash = 4
+    const gap = 4
+    const offset = 0
+    const p = new Path2D()
+    p.rect(copyRangeX + 0.5, copyRangeY + 0.5, copyRangeWidth - 1, copyRangeHeight - 1) // 0.5 to align to pixel grid for crisp 1px lines
+
+    // Slightly thicker than the normal active-cell border so it fully covers it
+    ctx.lineWidth = 1.5
+
+    // 1) colored dashes
+    ctx.setLineDash([dash, gap])
+    ctx.lineDashOffset = offset
+    ctx.strokeStyle = 'purple'
+    ctx.stroke(p)
+
+    // 2) white dashes, phase-shifted to sit in the gaps
+    ctx.lineDashOffset = offset + dash // shift by one dash length
+    ctx.strokeStyle = '#fff'
+    ctx.stroke(p)
+
+    ctx.restore()
   }
 }
