@@ -2,6 +2,24 @@ import { create } from 'zustand'
 import type { Bounds, Cell, CellCoordinate, ClipboardPointer } from '../Types'
 
 interface SpreadsheetState {
+  rowCount: number
+  setRowCount: (rows: number) => void
+
+  colCount: number
+  setColCount: (cols: number) => void
+
+  rowHeights: Record<number, number>
+  setRowHeight: (row: number, height: number) => void
+  resetRowHeight: (row: number) => void
+
+  colWidths: Record<number, number>
+  setColWidth: (col: number, width: number) => void
+  resetColWidth: (col: number) => void
+
+  defaultRowHeight: number
+
+  defaultColWidth: number
+
   activeCell: CellCoordinate
   setActiveCell: (coord: CellCoordinate) => void
 
@@ -22,6 +40,49 @@ interface SpreadsheetState {
 }
 
 export const useSpreadsheetStore = create<SpreadsheetState>((set) => ({
+  rowCount: 100,
+  setRowCount: (rows) => {
+    set({ rowCount: rows })
+  },
+
+  colCount: 100,
+  setColCount: (cols) => {
+    set({ colCount: cols })
+  },
+
+  rowHeights: {},
+  colWidths: {},
+  defaultRowHeight: 21,
+  defaultColWidth: 100,
+
+  setRowHeight: (row, height) =>
+    set((state) => ({
+      rowHeights: {
+        ...state.rowHeights,
+        [row]: height,
+      },
+    })),
+
+  resetRowHeight: (row) =>
+    set((state) => {
+      const { [row]: _, ...rest } = state.rowHeights
+      return { rowHeights: rest }
+    }),
+
+  setColWidth: (col, width) =>
+    set((state) => ({
+      colWidths: {
+        ...state.colWidths,
+        [col]: width,
+      },
+    })),
+
+  resetColWidth: (col) =>
+    set((state) => {
+      const { [col]: _, ...rest } = state.colWidths
+      return { colWidths: rest }
+    }),
+
   activeCell: { row: 1, col: 1 },
   setActiveCell: (coord) => {
     set({ activeCell: coord })

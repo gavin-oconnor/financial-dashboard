@@ -1,14 +1,9 @@
 import { parseCell } from './Services'
 import { useSpreadsheetStore } from './store/spreadsheetStore'
 
-export const clickActivate = (
-  row: number,
-  col: number,
-  rows: number,
-  cols: number,
-  shift: boolean
-) => {
+export const clickActivate = (row: number, col: number, shift: boolean) => {
   // Calculate position relative to canvas
+  const { rowCount, colCount } = useSpreadsheetStore.getState()
   if (row === -1 && col >= 0) {
     const { setCellData, activeCell, editingValue, isEditing } = useSpreadsheetStore.getState()
     if (isEditing) {
@@ -21,10 +16,11 @@ export const clickActivate = (
     }
     useSpreadsheetStore.setState({
       activeCell: { row: 0, col },
-      activeRange: { top: 0, right: col, left: col, bottom: rows - 1 },
+      activeRange: { top: 0, right: col, left: col, bottom: rowCount - 1 },
     })
   } else if (col === -1 && row >= 0) {
-    const { setCellData, activeCell, editingValue, isEditing } = useSpreadsheetStore.getState()
+    const { setCellData, activeCell, editingValue, isEditing, colCount } =
+      useSpreadsheetStore.getState()
     if (isEditing) {
       const key = `${activeCell.row},${activeCell.col}`
       setCellData((prev) => {
@@ -35,11 +31,10 @@ export const clickActivate = (
     }
     useSpreadsheetStore.setState({
       activeCell: { row, col: 0 },
-      activeRange: { top: row, bottom: row, left: 0, right: cols - 1 },
+      activeRange: { top: row, bottom: row, left: 0, right: colCount - 1 },
     })
-  } else if (row >= 0 && row < rows && col >= 0 && col < cols) {
+  } else if (row >= 0 && row < rowCount && col >= 0 && col < colCount) {
     if (shift) {
-      console.log('SHIFT')
       const { setCellData, activeCell, editingValue, isEditing, setActiveRange } =
         useSpreadsheetStore.getState()
       if (isEditing) {
@@ -74,8 +69,9 @@ export const clickActivate = (
   }
 }
 
-export const dblClickActivateEditing = (row: number, col: number, rows: number, cols: number) => {
-  if (row >= 0 && row < rows && col >= 0 && col < cols) {
+export const dblClickActivateEditing = (row: number, col: number) => {
+  const { rowCount, colCount } = useSpreadsheetStore.getState()
+  if (row >= 0 && row < rowCount && col >= 0 && col < colCount) {
     const { setActiveCell, setIsEditing, cellData, setEditingValue } =
       useSpreadsheetStore.getState()
     setActiveCell({ row, col })
@@ -87,18 +83,19 @@ export const dblClickActivateEditing = (row: number, col: number, rows: number, 
   }
 }
 
-export const dragToActiveRange = (row: number, col: number, rows: number, cols: number) => {
+export const dragToActiveRange = (row: number, col: number) => {
+  const { rowCount, colCount } = useSpreadsheetStore.getState()
   // remove when we want to drag for ranges of rows/cols
   if (row === -1 || col === -1) {
     return
   }
-  const activeRangeRow: number = Math.min(Math.max(row, 0), rows - 1)
-  const activeRangeCol: number = Math.min(Math.max(col, 0), cols - 1)
+  const activeRangeRow: number = Math.min(Math.max(row, 0), rowCount - 1)
+  const activeRangeCol: number = Math.min(Math.max(col, 0), colCount - 1)
   const { activeCell, setActiveRange } = useSpreadsheetStore.getState()
   if (activeRangeCol === activeCell.col && activeRangeRow === activeCell.row) {
     const currentRange = useSpreadsheetStore.getState().activeRange
-    const isFullRow = currentRange && currentRange.left === 0 && currentRange.right === cols - 1
-    const isFullCol = currentRange && currentRange.top === 0 && currentRange.bottom === rows - 1
+    const isFullRow = currentRange && currentRange.left === 0 && currentRange.right === colCount - 1
+    const isFullCol = currentRange && currentRange.top === 0 && currentRange.bottom === rowCount - 1
 
     if (!isFullRow && !isFullCol) {
       setActiveRange(null)

@@ -2,8 +2,6 @@
 
 #### RIGHT NOW
 
-Add shortcuts for row and col selection
-Add shift click for selecting range
 FIX FORMULAS
 FORMULAS
 

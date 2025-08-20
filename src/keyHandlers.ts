@@ -4,13 +4,13 @@ import { useSpreadsheetStore } from './store/spreadsheetStore'
 import type { Cell, ClipboardPointer } from './Types'
 import { isBounds, isCellCoordinate } from './TypeHelpers'
 
-export const handleArrowDown = (e: KeyboardEvent, rows: number) => {
+export const handleArrowDown = (e: KeyboardEvent) => {
   e.preventDefault()
-  const { activeRange, activeCell } = useSpreadsheetStore.getState()
+  const { activeRange, activeCell, rowCount } = useSpreadsheetStore.getState()
   const setActiveRange = useSpreadsheetStore.getState().setActiveRange
   const setActiveCell = useSpreadsheetStore.getState().setActiveCell
   if (e.shiftKey) {
-    if (!activeRange && activeCell.row < rows - 1) {
+    if (!activeRange && activeCell.row < rowCount - 1) {
       const newActiveRange = {
         top: activeCell.row,
         bottom: activeCell.row + 1,
@@ -29,12 +29,12 @@ export const handleArrowDown = (e: KeyboardEvent, rows: number) => {
         } else {
           setActiveRange({ ...activeRange, top: activeRange.top + 1 })
         }
-      } else if (activeRange && activeRange.bottom < rows - 1) {
+      } else if (activeRange && activeRange.bottom < rowCount - 1) {
         setActiveRange({ ...activeRange, bottom: activeRange.bottom + 1 })
       }
     }
   } else {
-    if (activeCell.row < rows - 1) {
+    if (activeCell.row < rowCount - 1) {
       setActiveCell({ row: activeCell.row + 1, col: activeCell.col })
       setActiveRange(null)
     }
@@ -78,13 +78,13 @@ export const handleArrowUp = (e: KeyboardEvent) => {
   }
 }
 
-export const handleArrowRight = (e: KeyboardEvent, cols: number) => {
+export const handleArrowRight = (e: KeyboardEvent) => {
   e.preventDefault()
-  const { activeRange, activeCell } = useSpreadsheetStore.getState()
+  const { activeRange, activeCell, colCount } = useSpreadsheetStore.getState()
   const setActiveRange = useSpreadsheetStore.getState().setActiveRange
   const setActiveCell = useSpreadsheetStore.getState().setActiveCell
   if (e.shiftKey) {
-    if (!activeRange && activeCell.col < cols - 1) {
+    if (!activeRange && activeCell.col < colCount - 1) {
       const newActiveRange = {
         top: activeCell.row,
         bottom: activeCell.row,
@@ -103,12 +103,12 @@ export const handleArrowRight = (e: KeyboardEvent, cols: number) => {
         } else {
           setActiveRange({ ...activeRange, left: activeRange.left + 1 })
         }
-      } else if (activeRange && activeRange.right < cols - 1) {
+      } else if (activeRange && activeRange.right < colCount - 1) {
         setActiveRange({ ...activeRange, right: activeRange.right + 1 })
       }
     }
   } else {
-    if (activeCell.col < cols - 1) {
+    if (activeCell.col < colCount - 1) {
       setActiveCell({ row: activeCell.row, col: activeCell.col + 1 })
       setActiveRange(null)
     }
@@ -159,7 +159,7 @@ export const handleInputKey = (e: KeyboardEvent) => {
   setEditingValue(e.key)
 }
 
-export const handleEnter = (e: KeyboardEvent, rows: number, shift: boolean) => {
+export const handleEnter = (e: KeyboardEvent, shift: boolean) => {
   const {
     setCellData,
     activeCell,
@@ -169,6 +169,7 @@ export const handleEnter = (e: KeyboardEvent, rows: number, shift: boolean) => {
     setActiveCell,
     isEditing,
     activeRange,
+    rowCount,
   } = useSpreadsheetStore.getState()
   e.preventDefault()
   if (isEditing) {
@@ -237,13 +238,13 @@ export const handleEnter = (e: KeyboardEvent, rows: number, shift: boolean) => {
     } else {
       setActiveCell({
         col: activeCell.col,
-        row: Math.min(activeCell.row + 1, rows - 1),
+        row: Math.min(activeCell.row + 1, rowCount - 1),
       })
     }
   }
 }
 
-export const handleTab = (e: KeyboardEvent, cols: number, shift: boolean) => {
+export const handleTab = (e: KeyboardEvent, shift: boolean) => {
   const {
     setCellData,
     activeCell,
@@ -253,6 +254,7 @@ export const handleTab = (e: KeyboardEvent, cols: number, shift: boolean) => {
     setActiveCell,
     isEditing,
     activeRange,
+    colCount,
   } = useSpreadsheetStore.getState()
   e.preventDefault()
   if (isEditing) {
@@ -319,7 +321,7 @@ export const handleTab = (e: KeyboardEvent, cols: number, shift: boolean) => {
       })
     } else {
       setActiveCell({
-        col: Math.min(activeCell.col + 1, cols - 1),
+        col: Math.min(activeCell.col + 1, colCount - 1),
         row: activeCell.row,
       })
     }
@@ -529,14 +531,14 @@ export const handleEscape = (e: KeyboardEvent) => {
   }
 }
 
-export const handleShiftSpace = (e: KeyboardEvent, rows: number) => {
+export const handleShiftSpace = (e: KeyboardEvent) => {
   e.preventDefault()
-  const { activeCell, setActiveRange } = useSpreadsheetStore.getState()
-  setActiveRange({ left: 0, right: rows - 1, top: activeCell.row, bottom: activeCell.row })
+  const { activeCell, setActiveRange, rowCount } = useSpreadsheetStore.getState()
+  setActiveRange({ left: 0, right: rowCount - 1, top: activeCell.row, bottom: activeCell.row })
 }
 
-export const handleMetaSpace = (e: KeyboardEvent, cols: number) => {
+export const handleMetaSpace = (e: KeyboardEvent) => {
   e.preventDefault()
-  const { activeCell, setActiveRange } = useSpreadsheetStore.getState()
-  setActiveRange({ left: activeCell.col, right: activeCell.col, top: 0, bottom: cols - 1 })
+  const { activeCell, setActiveRange, colCount } = useSpreadsheetStore.getState()
+  setActiveRange({ left: activeCell.col, right: activeCell.col, top: 0, bottom: colCount - 1 })
 }

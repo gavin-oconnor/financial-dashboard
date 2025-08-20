@@ -87,14 +87,37 @@ export const mouseCoordToSheetCoord = (
   bounds: DOMRect,
   scrollOffset: Coordinate,
   rowHeaderWidth: number,
-  columnHeaderHeight: number,
-  cellHeight: number,
-  cellWidth: number
+  columnHeaderHeight: number
 ) => {
-  const x = e.clientX - bounds.left
-  const y = e.clientY - bounds.top
+  const { rowHeights, colWidths, defaultRowHeight, defaultColWidth, rowCount, colCount } =
+    useSpreadsheetStore.getState()
 
-  const col = Math.floor((x + scrollOffset.x - rowHeaderWidth) / cellWidth)
-  const row = Math.floor((y + scrollOffset.y - columnHeaderHeight) / cellHeight)
+  const x = e.clientX - bounds.left + scrollOffset.x - rowHeaderWidth
+  const y = e.clientY - bounds.top + scrollOffset.y - columnHeaderHeight
+
+  // --- find column ---
+  let col = -1
+  let curX = 0
+  for (let c = 0; c < colCount; c++) {
+    const width = colWidths[c] ?? defaultColWidth
+    if (x < curX + width) {
+      col = c
+      break
+    }
+    curX += width
+  }
+
+  // --- find row ---
+  let row = -1
+  let curY = 0
+  for (let r = 0; r < rowCount; r++) {
+    const height = rowHeights[r] ?? defaultRowHeight
+    if (y < curY + height) {
+      row = r
+      break
+    }
+    curY += height
+  }
+
   return { row, col }
 }

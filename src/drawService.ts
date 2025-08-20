@@ -7,26 +7,18 @@ export const drawCanvas = (
   ctx: CanvasRenderingContext2D,
   scrollOffset: Coordinate,
   viewportSize: Dimension,
-  cellWidth: number,
-  cellHeight: number,
-  rows: number,
-  cols: number,
   rowHeaderWidth: number,
   columnHeaderHeight: number,
   isDragging: boolean
 ) => {
-  const { cellData, activeCell, activeRange, clipboardPointer } = useSpreadsheetStore.getState()
+  const { cellData, activeCell, activeRange, clipboardPointer, rowCount, colCount } =
+    useSpreadsheetStore.getState()
 
-  const startCol = Math.floor(scrollOffset.x / cellWidth)
-  const endCol = Math.min(cols, Math.ceil((scrollOffset.x + viewportSize.width) / cellWidth))
-  const startRow = Math.floor(scrollOffset.y / cellHeight)
-  const endRow = Math.min(rows, Math.ceil((scrollOffset.y + viewportSize.height) / cellHeight))
+  const { startRow, endRow, startCol, endCol } = getVisibleRange(scrollOffset, viewportSize)
 
   drawCells(
     ctx,
     scrollOffset,
-    cellWidth,
-    cellHeight,
     rowHeaderWidth,
     columnHeaderHeight,
     startRow,
@@ -40,8 +32,6 @@ export const drawCanvas = (
   drawActiveCell(
     ctx,
     scrollOffset,
-    cellWidth,
-    cellHeight,
     rowHeaderWidth,
     columnHeaderHeight,
     startRow,
@@ -54,31 +44,21 @@ export const drawCanvas = (
   drawActiveRangeBorder(
     ctx,
     scrollOffset,
-    cellWidth,
-    cellHeight,
     rowHeaderWidth,
     columnHeaderHeight,
     isDragging,
     activeRange
   )
 
-  drawCopyModeRange(
-    ctx,
-    scrollOffset,
-    cellWidth,
-    cellHeight,
-    rowHeaderWidth,
-    columnHeaderHeight,
-    clipboardPointer
-  )
+  drawCopyModeRange(ctx, scrollOffset, rowHeaderWidth, columnHeaderHeight, clipboardPointer)
 
   drawRowLabels(
     ctx,
     startRow,
     endRow,
     scrollOffset,
-    cellHeight,
     rowHeaderWidth,
+    columnHeaderHeight,
     activeCell,
     activeRange
   )
@@ -87,66 +67,134 @@ export const drawCanvas = (
     startCol,
     endCol,
     scrollOffset,
-    cellWidth,
-    cellHeight,
+    columnHeaderHeight,
     rowHeaderWidth,
     activeCell,
     activeRange
   )
 
-  drawColRowLabelDivider(ctx, cellHeight, rowHeaderWidth)
+  drawColRowLabelDivider(ctx, columnHeaderHeight, rowHeaderWidth)
 
   // draw active range border when dragging is not active
 }
 
-const drawCells = (
+export const getVisibleRange = (
+  scrollOffset: Coordinate,
+  viewportSize: { width: number; height: number }
+) => {
+  const { rowHeights, colWidths, defaultRowHeight, defaultColWidth, rowCount, colCount } =
+    useSpreadsheetStore.getState()
+
+  // --- find startCol & endCol ---
+  let curX = 0
+  let startCol = 0
+  while (startCol < colCount) {
+    const width = colWidths[startCol] ?? defaultColWidth
+    if (curX + width > scrollOffset.x) break
+    curX += width
+    startCol++
+  }
+
+  let endCol = startCol
+  let xRight = curX
+  while (endCol < colCount && xRight < scrollOffset.x + viewportSize.width) {
+    xRight += colWidths[endCol] ?? defaultColWidth
+    endCol++
+  }
+
+  // --- find startRow & endRow ---
+  let curY = 0
+  let startRow = 0
+  while (startRow < rowCount) {
+    const height = rowHeights[startRow] ?? defaultRowHeight
+    if (curY + height > scrollOffset.y) break
+    curY += height
+    startRow++
+  }
+
+  let endRow = startRow
+  let yBottom = curY
+  while (endRow < rowCount && yBottom < scrollOffset.y + viewportSize.height) {
+    yBottom += rowHeights[endRow] ?? defaultRowHeight
+    endRow++
+  }
+
+  return { startRow, endRow, startCol, endCol }
+}
+
+export const drawCells = (
   ctx: CanvasRenderingContext2D,
   scrollOffset: Coordinate,
-  cellWidth: number,
-  cellHeight: number,
   rowHeaderWidth: number,
   columnHeaderHeight: number,
   startRow: number,
   startCol: number,
   endRow: number,
   endCol: number,
-  cellData: Map<String, Cell>,
+  cellData: Map<string, Cell>,
   activeRange: Bounds | null
 ) => {
-  for (let row = startRow; row < endRow; row++) {
-    for (let col = startCol; col < endCol; col++) {
-      const x = col * cellWidth - scrollOffset.x + rowHeaderWidth
-      const y = row * cellHeight - scrollOffset.y + columnHeaderHeight
+  const { rowHeights, colWidths, defaultRowHeight, defaultColWidth } =
+    useSpreadsheetStore.getState()
 
+  // compute starting X offset
+  let colX = rowHeaderWidth - scrollOffset.x
+  for (let c = 0; c < startCol; c++) {
+    colX += colWidths[c] ?? defaultColWidth
+  }
+
+  for (let col = startCol; col < endCol; col++) {
+    const width = colWidths[col] ?? defaultColWidth
+
+    // compute starting Y offset for this column
+    let rowY = columnHeaderHeight - scrollOffset.y
+    for (let r = 0; r < startRow; r++) {
+      rowY += rowHeights[r] ?? defaultRowHeight
+    }
+
+    for (let row = startRow; row < endRow; row++) {
+      const height = rowHeights[row] ?? defaultRowHeight
+      const x = colX
+      const y = rowY
+
+      // background
       ctx.fillStyle = 'white'
-      ctx.fillRect(x, y, cellWidth, cellHeight)
+      ctx.fillRect(x, y, width, height)
 
+      // border
       ctx.strokeStyle = '#ccc'
-      ctx.strokeRect(x, y, cellWidth, cellHeight)
-      if (cellData.has(`${[row]},${[col]}`)) {
+      ctx.strokeRect(x, y, width, height)
+
+      // text
+      const key = `${row},${col}`
+      if (cellData.has(key)) {
         ctx.fillStyle = 'black'
         ctx.font = '12px sans-serif'
-        ctx.fillText(cellData.get(`${[row]},${[col]}`)?.value ?? '', x + 5, y + 15)
+        ctx.fillText(cellData.get(key)?.value ?? '', x + 5, y + 15)
       }
+
+      // activeRange highlight
       if (
         activeRange &&
         activeRange.top <= row &&
         row <= activeRange.bottom &&
         activeRange.left <= col &&
-        activeRange.right >= col
+        col <= activeRange.right
       ) {
-        ctx.fillStyle = 'rgb(84, 178, 255, 0.3)'
-        ctx.fillRect(x, y, cellWidth, cellHeight)
+        ctx.fillStyle = 'rgba(84, 178, 255, 0.3)'
+        ctx.fillRect(x, y, width, height)
       }
+
+      rowY += height
     }
+
+    colX += width
   }
 }
 
-const drawActiveCell = (
+export const drawActiveCell = (
   ctx: CanvasRenderingContext2D,
   scrollOffset: Coordinate,
-  cellWidth: number,
-  cellHeight: number,
   rowHeaderWidth: number,
   columnHeaderHeight: number,
   startRow: number,
@@ -155,49 +203,73 @@ const drawActiveCell = (
   endCol: number,
   activeCell: CellCoordinate
 ) => {
+  const { rowHeights, colWidths, defaultRowHeight, defaultColWidth } =
+    useSpreadsheetStore.getState()
+
   if (
     startRow <= activeCell.row &&
     activeCell.row < endRow &&
     startCol <= activeCell.col &&
     activeCell.col < endCol
   ) {
-    const x = activeCell.col * cellWidth - scrollOffset.x + rowHeaderWidth
-    const y = activeCell.row * cellHeight - scrollOffset.y + columnHeaderHeight
+    // compute x by summing col widths up to activeCell.col
+    let x = rowHeaderWidth - scrollOffset.x
+    for (let c = 0; c < activeCell.col; c++) {
+      x += colWidths[c] ?? defaultColWidth
+    }
+
+    // compute y by summing row heights up to activeCell.row
+    let y = columnHeaderHeight - scrollOffset.y
+    for (let r = 0; r < activeCell.row; r++) {
+      y += rowHeights[r] ?? defaultRowHeight
+    }
+
+    const width = colWidths[activeCell.col] ?? defaultColWidth
+    const height = rowHeights[activeCell.row] ?? defaultRowHeight
+
     ctx.strokeStyle = 'rgb(33, 73, 105)'
     ctx.lineWidth = 2
-    ctx.strokeRect(x, y, cellWidth, cellHeight)
+    ctx.strokeRect(x, y, width, height)
+
+    // reset stroke style
     ctx.strokeStyle = '#ccc'
     ctx.lineWidth = 1
   }
 }
 
-const drawColRowLabelDivider = (
+export const drawColRowLabelDivider = (
   ctx: CanvasRenderingContext2D,
-  cellHeight: number,
+  columnHeaderHeight: number,
   rowHeaderWidth: number
 ) => {
-  const x = 0
-  const y = 0
   ctx.fillStyle = '#e1e1e1'
-  ctx.fillRect(x, y, rowHeaderWidth, cellHeight)
+  ctx.fillRect(0, 0, rowHeaderWidth, columnHeaderHeight)
   ctx.strokeStyle = '#ccc'
-  ctx.strokeRect(x, y, rowHeaderWidth, cellHeight)
+  ctx.strokeRect(0, 0, rowHeaderWidth, columnHeaderHeight)
 }
 
-const drawColumnLabels = (
+export const drawColumnLabels = (
   ctx: CanvasRenderingContext2D,
   startCol: number,
   endCol: number,
   scrollOffset: Coordinate,
-  cellWidth: number,
-  cellHeight: number,
+  columnHeaderHeight: number,
   rowHeaderWidth: number,
   activeCell: CellCoordinate,
   activeRange: Bounds | null
 ) => {
+  const { colWidths, defaultColWidth } = useSpreadsheetStore.getState()
+
+  // start x position offset by rowHeaderWidth - scroll
+  let x = rowHeaderWidth - scrollOffset.x
+  for (let c = 0; c < startCol; c++) {
+    x += colWidths[c] ?? defaultColWidth
+  }
+
   for (let col = startCol; col < endCol; col++) {
-    const x = col * cellWidth - scrollOffset.x + rowHeaderWidth
+    const width = colWidths[col] ?? defaultColWidth
     const y = 0
+
     if (activeRange && activeRange.left <= col && col <= activeRange.right) {
       ctx.fillStyle = '#a9a9a9ff'
     } else if (activeCell.col === col) {
@@ -205,30 +277,43 @@ const drawColumnLabels = (
     } else {
       ctx.fillStyle = '#e1e1e1ff'
     }
-    ctx.fillRect(x, y, cellWidth, cellHeight)
+
+    ctx.fillRect(x, y, width, columnHeaderHeight)
     ctx.strokeStyle = '#ccc'
-    ctx.strokeRect(x, y, cellWidth, cellHeight)
+    ctx.strokeRect(x, y, width, columnHeaderHeight)
+
     ctx.fillStyle = 'rgb(50,50,50)'
     ctx.font = 'bold 12px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(`${colIndexToLabel(col)}`, x + cellWidth / 2, y + cellHeight / 2)
+    ctx.fillText(colIndexToLabel(col), x + width / 2, y + columnHeaderHeight / 2)
+
+    x += width
   }
 }
 
-const drawRowLabels = (
+export const drawRowLabels = (
   ctx: CanvasRenderingContext2D,
   startRow: number,
   endRow: number,
   scrollOffset: Coordinate,
-  cellHeight: number,
   rowHeaderWidth: number,
+  columnHeaderHeight: number,
   activeCell: CellCoordinate,
   activeRange: Bounds | null
 ) => {
+  const { rowHeights, defaultRowHeight } = useSpreadsheetStore.getState()
+
+  // start y position offset by columnHeaderHeight - scroll
+  let y = columnHeaderHeight - scrollOffset.y
+  for (let r = 0; r < startRow; r++) {
+    y += rowHeights[r] ?? defaultRowHeight
+  }
+
   for (let row = startRow; row < endRow; row++) {
+    const height = rowHeights[row] ?? defaultRowHeight
     const x = 0
-    const y = (row + 1) * cellHeight - scrollOffset.y
+
     if (activeRange && activeRange.top <= row && row <= activeRange.bottom) {
       ctx.fillStyle = '#a9a9a9ff'
     } else if (activeCell.row === row) {
@@ -236,107 +321,119 @@ const drawRowLabels = (
     } else {
       ctx.fillStyle = '#e1e1e1ff'
     }
-    ctx.fillRect(x, y, rowHeaderWidth, cellHeight)
+
+    ctx.fillRect(x, y, rowHeaderWidth, height)
     ctx.strokeStyle = '#ccc'
-    ctx.strokeRect(x, y, rowHeaderWidth, cellHeight)
+    ctx.strokeRect(x, y, rowHeaderWidth, height)
+
     ctx.fillStyle = 'rgb(50,50,50)'
     ctx.font = '12px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(`${row + 1}`, x + rowHeaderWidth / 2, y + cellHeight / 2)
+    ctx.fillText(`${row + 1}`, x + rowHeaderWidth / 2, y + height / 2)
+
+    y += height
   }
 }
 
-const drawActiveRangeBorder = (
+export const drawActiveRangeBorder = (
   ctx: CanvasRenderingContext2D,
   scrollOffset: Coordinate,
-  cellWidth: number,
-  cellHeight: number,
   rowHeaderWidth: number,
   columnHeaderHeight: number,
   isDragging: boolean,
   activeRange: Bounds | null
 ) => {
   if (!isDragging && activeRange) {
-    const activeRangeX = activeRange.left * cellWidth - scrollOffset.x + rowHeaderWidth
-    const activeRangeY = activeRange.top * cellHeight - scrollOffset.y + columnHeaderHeight
+    const { rowHeights, colWidths, defaultRowHeight, defaultColWidth } =
+      useSpreadsheetStore.getState()
+
+    // --- compute x & total width ---
+    let activeRangeX = rowHeaderWidth - scrollOffset.x
+    for (let c = 0; c < activeRange.left; c++) {
+      activeRangeX += colWidths[c] ?? defaultColWidth
+    }
+    let width = 0
+    for (let c = activeRange.left; c <= activeRange.right; c++) {
+      width += colWidths[c] ?? defaultColWidth
+    }
+
+    // --- compute y & total height ---
+    let activeRangeY = columnHeaderHeight - scrollOffset.y
+    for (let r = 0; r < activeRange.top; r++) {
+      activeRangeY += rowHeights[r] ?? defaultRowHeight
+    }
+    let height = 0
+    for (let r = activeRange.top; r <= activeRange.bottom; r++) {
+      height += rowHeights[r] ?? defaultRowHeight
+    }
+
     ctx.strokeStyle = 'rgb(59, 125, 179, 1)'
-    ctx.strokeRect(
-      activeRangeX,
-      activeRangeY,
-      (activeRange.right - activeRange.left + 1) * cellWidth,
-      (activeRange.bottom - activeRange.top + 1) * cellHeight
-    )
+    ctx.lineWidth = 2
+    ctx.strokeRect(activeRangeX, activeRangeY, width, height)
+    ctx.lineWidth = 1
   }
 }
 
-const drawCopyModeRange = (
+export const drawCopyModeRange = (
   ctx: CanvasRenderingContext2D,
   scrollOffset: Coordinate,
-  cellWidth: number,
-  cellHeight: number,
   rowHeaderWidth: number,
   columnHeaderHeight: number,
   clipboardPointer: ClipboardPointer | null
 ) => {
-  if (!clipboardPointer || !clipboardPointer.copyActive) {
-    return
-  }
+  if (!clipboardPointer || !clipboardPointer.copyActive) return
+
+  const { rowHeights, colWidths, defaultRowHeight, defaultColWidth } =
+    useSpreadsheetStore.getState()
+
+  let copyRangeX = rowHeaderWidth - scrollOffset.x
+  let copyRangeY = columnHeaderHeight - scrollOffset.y
+  let copyRangeWidth = 0
+  let copyRangeHeight = 0
+
   if (isBounds(clipboardPointer.srcRange)) {
-    const copyRangeX = clipboardPointer.srcRange.left * cellWidth - scrollOffset.x + rowHeaderWidth
-    const copyRangeY =
-      clipboardPointer.srcRange.top * cellHeight - scrollOffset.y + columnHeaderHeight
-    const copyRangeWidth =
-      (clipboardPointer.srcRange.right - clipboardPointer.srcRange.left + 1) * cellWidth
-    const copyRangeHeight =
-      (clipboardPointer.srcRange.bottom - clipboardPointer.srcRange.top + 1) * cellHeight
-    const dash = 4
-    const gap = 4
-    const offset = 0
-    const p = new Path2D()
-    p.rect(copyRangeX + 0.5, copyRangeY + 0.5, copyRangeWidth - 1, copyRangeHeight - 1) // 0.5 to align to pixel grid for crisp 1px lines
+    const { left, right, top, bottom } = clipboardPointer.srcRange
 
-    // Slightly thicker than the normal active-cell border so it fully covers it
-    ctx.lineWidth = 1.5
+    // --- compute X + width ---
+    for (let c = 0; c < left; c++) copyRangeX += colWidths[c] ?? defaultColWidth
+    for (let c = left; c <= right; c++) copyRangeWidth += colWidths[c] ?? defaultColWidth
 
-    // 1) colored dashes
-    ctx.setLineDash([dash, gap])
-    ctx.lineDashOffset = offset
-    ctx.strokeStyle = 'purple'
-    ctx.stroke(p)
-
-    // 2) white dashes, phase-shifted to sit in the gaps
-    ctx.lineDashOffset = offset + dash // shift by one dash length
-    ctx.strokeStyle = '#fff'
-    ctx.stroke(p)
-
-    ctx.restore()
+    // --- compute Y + height ---
+    for (let r = 0; r < top; r++) copyRangeY += rowHeights[r] ?? defaultRowHeight
+    for (let r = top; r <= bottom; r++) copyRangeHeight += rowHeights[r] ?? defaultRowHeight
   } else {
-    const copyRangeX = clipboardPointer.srcRange.col * cellWidth - scrollOffset.x + rowHeaderWidth
-    const copyRangeY =
-      clipboardPointer.srcRange.row * cellHeight - scrollOffset.y + columnHeaderHeight
-    const copyRangeWidth = cellWidth
-    const copyRangeHeight = cellHeight
-    const dash = 4
-    const gap = 4
-    const offset = 0
-    const p = new Path2D()
-    p.rect(copyRangeX + 0.5, copyRangeY + 0.5, copyRangeWidth - 1, copyRangeHeight - 1) // 0.5 to align to pixel grid for crisp 1px lines
+    const { row, col } = clipboardPointer.srcRange
 
-    // Slightly thicker than the normal active-cell border so it fully covers it
-    ctx.lineWidth = 1.5
+    // --- compute X + width ---
+    for (let c = 0; c < col; c++) copyRangeX += colWidths[c] ?? defaultColWidth
+    copyRangeWidth = colWidths[col] ?? defaultColWidth
 
-    // 1) colored dashes
-    ctx.setLineDash([dash, gap])
-    ctx.lineDashOffset = offset
-    ctx.strokeStyle = 'purple'
-    ctx.stroke(p)
-
-    // 2) white dashes, phase-shifted to sit in the gaps
-    ctx.lineDashOffset = offset + dash // shift by one dash length
-    ctx.strokeStyle = '#fff'
-    ctx.stroke(p)
-
-    ctx.restore()
+    // --- compute Y + height ---
+    for (let r = 0; r < row; r++) copyRangeY += rowHeights[r] ?? defaultRowHeight
+    copyRangeHeight = rowHeights[row] ?? defaultRowHeight
   }
+
+  const dash = 4
+  const gap = 4
+  const offset = 0
+  const p = new Path2D()
+  p.rect(copyRangeX + 0.5, copyRangeY + 0.5, copyRangeWidth - 1, copyRangeHeight - 1)
+
+  ctx.lineWidth = 1.5
+
+  // 1) purple dashes
+  ctx.setLineDash([dash, gap])
+  ctx.lineDashOffset = offset
+  ctx.strokeStyle = 'purple'
+  ctx.stroke(p)
+
+  // 2) white dashes phase-shifted
+  ctx.lineDashOffset = offset + dash
+  ctx.strokeStyle = '#fff'
+  ctx.stroke(p)
+
+  // reset
+  ctx.setLineDash([])
+  ctx.lineWidth = 1
 }

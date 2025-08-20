@@ -23,10 +23,6 @@ import { drawCanvas } from './drawService.ts'
 import { clickActivate, dblClickActivateEditing, dragToActiveRange } from './clickHandlers.ts'
 import { mouseCoordToSheetCoord } from './Services.ts'
 
-const cellWidth = 100
-const cellHeight = 21
-const rows = 100
-const cols = 100
 const columnHeaderHeight = 21
 const rowHeaderWidth = 60
 
@@ -42,25 +38,25 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const { isEditing } = useSpreadsheetStore.getState()
       if (e.key === 'ArrowDown') {
-        !isEditing && handleArrowDown(e, rows)
+        !isEditing && handleArrowDown(e)
       } else if (e.key === 'ArrowUp') {
         !isEditing && handleArrowUp(e)
       } else if (e.key === 'ArrowRight') {
-        !isEditing && handleArrowRight(e, cols)
+        !isEditing && handleArrowRight(e)
       } else if (e.key === 'ArrowLeft') {
         !isEditing && handleArrowLeft(e)
       } else if (e.key === ' ' && e.shiftKey) {
-        handleShiftSpace(e, rows)
+        handleShiftSpace(e)
       } else if (e.key === ' ' && (e.ctrlKey || e.metaKey)) {
-        handleMetaSpace(e, cols)
+        handleMetaSpace(e)
       } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditing) {
         handleInputKey(e)
       } else if (e.key === 'Enter') {
-        handleEnter(e, rows, e.shiftKey)
+        handleEnter(e, e.shiftKey)
       } else if (e.key === 'Backspace' && !isEditing) {
         handleBackspace(e)
       } else if (e.key === 'Tab') {
-        handleTab(e, cols, e.shiftKey)
+        handleTab(e, e.shiftKey)
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'c') {
         handleCopy()
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() == 'x') {
@@ -101,11 +97,9 @@ export default function App() {
         bounds,
         scrollOffset,
         rowHeaderWidth,
-        columnHeaderHeight,
-        cellHeight,
-        cellWidth
+        columnHeaderHeight
       )
-      dblClickActivateEditing(row, col, rows, cols)
+      dblClickActivateEditing(row, col)
     }
 
     window.addEventListener('dblclick', handleDoubleClick)
@@ -141,11 +135,9 @@ export default function App() {
         bounds,
         scrollOffset,
         rowHeaderWidth,
-        columnHeaderHeight,
-        cellHeight,
-        cellWidth
+        columnHeaderHeight
       )
-      clickActivate(row, col, rows, cols, e.shiftKey)
+      clickActivate(row, col, e.shiftKey)
       // isDraggingRef.current = true
       setIsDragging(true)
     }
@@ -171,11 +163,9 @@ export default function App() {
         bounds,
         scrollOffset,
         rowHeaderWidth,
-        columnHeaderHeight,
-        cellHeight,
-        cellWidth
+        columnHeaderHeight
       )
-      dragToActiveRange(row, col, rows, cols)
+      dragToActiveRange(row, col)
     }
 
     window.addEventListener('mousemove', handleMove)
@@ -212,21 +202,44 @@ export default function App() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    drawCanvas(
-      ctx,
-      scrollOffset,
-      viewportSize,
-      cellWidth,
-      cellHeight,
-      rows,
-      cols,
-      rowHeaderWidth,
-      columnHeaderHeight,
-      isDragging
-    )
+    drawCanvas(ctx, scrollOffset, viewportSize, rowHeaderWidth, columnHeaderHeight, isDragging)
   }, [scrollOffset, viewportSize, spreadsheetStore, isDragging])
-  const { isEditing, activeCell, setIsEditing, setEditingValue, setCellData, editingValue } =
-    useSpreadsheetStore()
+  const {
+    isEditing,
+    activeCell,
+    setIsEditing,
+    setEditingValue,
+    rowCount,
+    colCount,
+    editingValue,
+    colWidths,
+    defaultColWidth,
+    rowHeights,
+    defaultRowHeight,
+  } = useSpreadsheetStore()
+  let totalWidth = rowHeaderWidth
+  for (let c = 0; c < colCount; c++) {
+    totalWidth += colWidths[c] ?? defaultColWidth
+  }
+
+  // total height = sum of all row heights + column header
+  let totalHeight = columnHeaderHeight
+  for (let r = 0; r < rowCount; r++) {
+    totalHeight += rowHeights[r] ?? defaultRowHeight
+  }
+  // compute left offset (sum of widths before activeCell.col)
+  let left = rowHeaderWidth - scrollOffset.x
+  for (let c = 0; c < activeCell.col; c++) {
+    left += colWidths[c] ?? defaultColWidth
+  }
+  const width = (colWidths[activeCell.col] ?? defaultColWidth) - 10
+
+  // compute top offset (sum of heights before activeCell.row)
+  let top = columnHeaderHeight - scrollOffset.y + 80
+  for (let r = 0; r < activeCell.row; r++) {
+    top += rowHeights[r] ?? defaultRowHeight
+  }
+  const height = (rowHeights[activeCell.row] ?? defaultRowHeight) - 2
   return (
     <>
       {/* Fixed Ribbon */}
@@ -263,8 +276,8 @@ export default function App() {
         {/* Fake scroll content */}
         <div
           style={{
-            width: `${cols * cellWidth + rowHeaderWidth}px`,
-            height: `${rows * cellHeight + columnHeaderHeight}px`,
+            width: `${totalWidth}px`,
+            height: `${totalHeight}px`,
           }}
         ></div>
       </div>
@@ -291,10 +304,10 @@ export default function App() {
           autoFocus
           style={{
             position: 'absolute',
-            top: 80 + activeCell.row * cellHeight - scrollOffset.y + columnHeaderHeight,
-            left: activeCell.col * cellWidth - scrollOffset.x + rowHeaderWidth,
-            width: cellWidth - 10,
-            height: cellHeight - 2,
+            top,
+            left,
+            width,
+            height,
             fontSize: '12px',
             border: '1px solid #3b82f6',
             padding: '0 4px',
