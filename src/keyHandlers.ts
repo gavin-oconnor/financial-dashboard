@@ -1,4 +1,4 @@
-import type { Key } from 'react'
+import { act, type Key } from 'react'
 import { getCell, parseCell } from './Services'
 import { useSpreadsheetStore } from './store/spreadsheetStore'
 import type { Cell, ClipboardPointer } from './Types'
@@ -527,4 +527,16 @@ export const handleEscape = (e: KeyboardEvent) => {
     setIsEditing(false)
     setEditingValue('')
   }
+}
+
+export const handleShiftSpace = (e: KeyboardEvent, rows: number) => {
+  e.preventDefault()
+  const { activeCell, setActiveRange } = useSpreadsheetStore.getState()
+  setActiveRange({ left: 0, right: rows - 1, top: activeCell.row, bottom: activeCell.row })
+}
+
+export const handleMetaSpace = (e: KeyboardEvent, cols: number) => {
+  e.preventDefault()
+  const { activeCell, setActiveRange } = useSpreadsheetStore.getState()
+  setActiveRange({ left: activeCell.col, right: activeCell.col, top: 0, bottom: cols - 1 })
 }

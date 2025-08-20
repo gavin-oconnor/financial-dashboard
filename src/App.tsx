@@ -12,7 +12,9 @@ import {
   handleEnter,
   handleEscape,
   handleInputKey,
+  handleMetaSpace,
   handlePaste,
+  handleShiftSpace,
   handleTab,
 } from './keyHandlers.ts'
 import type { Coordinate, Dimension } from './Types.ts'
@@ -47,6 +49,10 @@ export default function App() {
         !isEditing && handleArrowRight(e, cols)
       } else if (e.key === 'ArrowLeft') {
         !isEditing && handleArrowLeft(e)
+      } else if (e.key === ' ' && e.shiftKey) {
+        handleShiftSpace(e, rows)
+      } else if (e.key === ' ' && (e.ctrlKey || e.metaKey)) {
+        handleMetaSpace(e, cols)
       } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditing) {
         handleInputKey(e)
       } else if (e.key === 'Enter') {
