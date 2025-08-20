@@ -72,8 +72,27 @@ export const drawCanvas = (
     clipboardPointer
   )
 
-  drawRowLabels(ctx, startRow, endRow, scrollOffset, cellHeight, rowHeaderWidth)
-  drawColumnLabels(ctx, startCol, endCol, scrollOffset, cellWidth, cellHeight, rowHeaderWidth)
+  drawRowLabels(
+    ctx,
+    startRow,
+    endRow,
+    scrollOffset,
+    cellHeight,
+    rowHeaderWidth,
+    activeCell,
+    activeRange
+  )
+  drawColumnLabels(
+    ctx,
+    startCol,
+    endCol,
+    scrollOffset,
+    cellWidth,
+    cellHeight,
+    rowHeaderWidth,
+    activeCell,
+    activeRange
+  )
 
   drawColRowLabelDivider(ctx, cellHeight, rowHeaderWidth)
 
@@ -172,12 +191,20 @@ const drawColumnLabels = (
   scrollOffset: Coordinate,
   cellWidth: number,
   cellHeight: number,
-  rowHeaderWidth: number
+  rowHeaderWidth: number,
+  activeCell: CellCoordinate,
+  activeRange: Bounds | null
 ) => {
   for (let col = startCol; col < endCol; col++) {
     const x = col * cellWidth - scrollOffset.x + rowHeaderWidth
     const y = 0
-    ctx.fillStyle = '#e1e1e1'
+    if (activeRange && activeRange.left <= col && col <= activeRange.right) {
+      ctx.fillStyle = '#a9a9a9ff'
+    } else if (activeCell.col === col) {
+      ctx.fillStyle = '#a9a9a9ff'
+    } else {
+      ctx.fillStyle = '#e1e1e1ff'
+    }
     ctx.fillRect(x, y, cellWidth, cellHeight)
     ctx.strokeStyle = '#ccc'
     ctx.strokeRect(x, y, cellWidth, cellHeight)
@@ -195,12 +222,20 @@ const drawRowLabels = (
   endRow: number,
   scrollOffset: Coordinate,
   cellHeight: number,
-  rowHeaderWidth: number
+  rowHeaderWidth: number,
+  activeCell: CellCoordinate,
+  activeRange: Bounds | null
 ) => {
   for (let row = startRow; row < endRow; row++) {
     const x = 0
     const y = (row + 1) * cellHeight - scrollOffset.y
-    ctx.fillStyle = '#e1e1e1'
+    if (activeRange && activeRange.top <= row && row <= activeRange.bottom) {
+      ctx.fillStyle = '#a9a9a9ff'
+    } else if (activeCell.row === row) {
+      ctx.fillStyle = '#a9a9a9ff'
+    } else {
+      ctx.fillStyle = '#e1e1e1ff'
+    }
     ctx.fillRect(x, y, rowHeaderWidth, cellHeight)
     ctx.strokeStyle = '#ccc'
     ctx.strokeRect(x, y, rowHeaderWidth, cellHeight)
