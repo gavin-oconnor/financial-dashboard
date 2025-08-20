@@ -1,7 +1,13 @@
 import { parseCell } from './Services'
 import { useSpreadsheetStore } from './store/spreadsheetStore'
 
-export const clickActivate = (row: number, col: number, rows: number, cols: number) => {
+export const clickActivate = (
+  row: number,
+  col: number,
+  rows: number,
+  cols: number,
+  shift: boolean
+) => {
   // Calculate position relative to canvas
   if (row === -1 && col >= 0) {
     const { setCellData, activeCell, editingValue, isEditing } = useSpreadsheetStore.getState()
@@ -32,19 +38,39 @@ export const clickActivate = (row: number, col: number, rows: number, cols: numb
       activeRange: { top: row, bottom: row, left: 0, right: cols - 1 },
     })
   } else if (row >= 0 && row < rows && col >= 0 && col < cols) {
-    const { setCellData, activeCell, editingValue, isEditing } = useSpreadsheetStore.getState()
-    if (isEditing) {
-      const key = `${activeCell.row},${activeCell.col}`
-      setCellData((prev) => {
-        const newData = new Map(prev)
-        newData.set(key, parseCell(editingValue))
-        return newData
+    if (shift) {
+      console.log('SHIFT')
+      const { setCellData, activeCell, editingValue, isEditing, setActiveRange } =
+        useSpreadsheetStore.getState()
+      if (isEditing) {
+        const key = `${activeCell.row},${activeCell.col}`
+        setCellData((prev) => {
+          const newData = new Map(prev)
+          newData.set(key, parseCell(editingValue))
+          return newData
+        })
+      }
+      setActiveRange({
+        left: Math.min(col, activeCell.col),
+        right: Math.max(col, activeCell.col),
+        top: Math.min(row, activeCell.row),
+        bottom: Math.max(row, activeCell.row),
+      })
+    } else {
+      const { setCellData, activeCell, editingValue, isEditing } = useSpreadsheetStore.getState()
+      if (isEditing) {
+        const key = `${activeCell.row},${activeCell.col}`
+        setCellData((prev) => {
+          const newData = new Map(prev)
+          newData.set(key, parseCell(editingValue))
+          return newData
+        })
+      }
+      useSpreadsheetStore.setState({
+        activeRange: null,
+        activeCell: { row, col },
       })
     }
-    useSpreadsheetStore.setState({
-      activeRange: null,
-      activeCell: { row, col },
-    })
   }
 }
 

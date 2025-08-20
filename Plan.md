@@ -2,15 +2,16 @@
 
 #### RIGHT NOW
 
+Add shortcuts for row and col selection
+Add shift click for selecting range
 FIX FORMULAS
-FIX WEIRD SHIFT + ARROW KEY BEHAVIOR
+FORMULAS
 
-DONE: Drag to select box
-Possibly implement pratt parsing
-Better error messages
-Understand how function evaluation works
-Cell ranges/Arrays in the formula parser
-Formula support with arrow keys
+- Possibly implement pratt parsing
+- Better error messages
+- Understand how function evaluation works
+- Cell ranges/Arrays in the formula parser
+- Formula support with arrow keys
 
 ### Notes
 

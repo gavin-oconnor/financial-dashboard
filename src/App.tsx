@@ -139,7 +139,7 @@ export default function App() {
         cellHeight,
         cellWidth
       )
-      clickActivate(row, col, rows, cols)
+      clickActivate(row, col, rows, cols, e.shiftKey)
       // isDraggingRef.current = true
       setIsDragging(true)
     }
